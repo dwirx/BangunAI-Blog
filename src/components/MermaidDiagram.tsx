@@ -4,14 +4,17 @@ interface MermaidDiagramProps {
   chart: string;
 }
 
+let mermaidIdCounter = 0;
+
 export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const idRef = useRef(`mermaid-${++mermaidIdCounter}-${Date.now()}`);
   const [error, setError] = useState<string>("");
   const [rendered, setRendered] = useState(false);
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
+    if (!el || !chart.trim()) return;
 
     let cancelled = false;
 
@@ -88,13 +91,14 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
           fontFamily: "Inter, sans-serif",
         });
 
-        // Reset the container for re-render
+        // Use unique ID to avoid conflicts with multiple diagrams
+        const uniqueId = idRef.current;
+        el.innerHTML = "";
         el.removeAttribute("data-processed");
-        el.textContent = chart.trim();
 
-        await mermaid.run({ nodes: [el] });
-
+        const { svg } = await mermaid.render(uniqueId, chart.trim());
         if (!cancelled) {
+          el.innerHTML = svg;
           setRendered(true);
           setError("");
         }
@@ -110,6 +114,7 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
 
     // Re-render on theme change
     const observer = new MutationObserver(() => {
+      idRef.current = `mermaid-${++mermaidIdCounter}-${Date.now()}`;
       setRendered(false);
       doRender();
     });

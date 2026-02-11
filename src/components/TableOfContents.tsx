@@ -18,15 +18,16 @@ export default function TableOfContents({ containerSelector = ".prose-article" }
   const [desktopOpen, setDesktopOpen] = useState(true);
   const tocRef = useRef<HTMLDivElement>(null);
 
-  // Extract headings after MDX renders
+  // Extract headings after MDX renders — use MutationObserver for reliability
   useEffect(() => {
     const extract = () => {
       const container = document.querySelector(containerSelector);
-      if (!container) return;
+      if (!container) return false;
 
       const elements = container.querySelectorAll("h2, h3, h4");
-      const items: TocItem[] = [];
+      if (elements.length === 0) return false;
 
+      const items: TocItem[] = [];
       elements.forEach((el, i) => {
         if (!el.id) {
           el.id = (el.textContent || "")
@@ -42,18 +43,28 @@ export default function TableOfContents({ containerSelector = ".prose-article" }
         });
       });
 
-      if (items.length > 0) setHeadings(items);
+      setHeadings(items);
+      return true;
     };
 
-    // Try multiple times since MDX content loads async
-    const t1 = setTimeout(extract, 300);
-    const t2 = setTimeout(extract, 800);
-    const t3 = setTimeout(extract, 1500);
+    // Initial attempt
+    if (extract()) return;
+
+    // Watch for content to appear
+    const observer = new MutationObserver(() => {
+      if (extract()) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Fallback timeout
+    const fallback = setTimeout(() => {
+      extract();
+      observer.disconnect();
+    }, 3000);
 
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
+      observer.disconnect();
+      clearTimeout(fallback);
     };
   }, [containerSelector]);
 

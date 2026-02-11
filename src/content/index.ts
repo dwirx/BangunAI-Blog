@@ -14,6 +14,7 @@ interface MdxModule {
 const writingModules = import.meta.glob<MdxModule>("./writing/*.mdx", { eager: true });
 const articleModules = import.meta.glob<MdxModule>("./articles/*.mdx", { eager: true });
 const readModules = import.meta.glob<MdxModule>("./read/*.mdx", { eager: true });
+const aboutModule = import.meta.glob<MdxModule>("./about.mdx", { eager: true });
 
 // Convert MDX modules to Post objects
 function mdxToPost(mod: MdxModule): Post & { Component: ComponentType } {
@@ -57,6 +58,13 @@ export const allPosts = [...writingPosts, ...articlePosts].sort(
 );
 
 export const allReadItems = Object.values(readModules).map(mdxToReadItem);
+
+// About page content
+export function getAboutContent() {
+  const mod = Object.values(aboutModule)[0];
+  if (!mod) return null;
+  return { Component: mod.default, frontmatter: mod.frontmatter };
+}
 
 // Lookup helpers
 export function getContentBySlug(slug: string) {
