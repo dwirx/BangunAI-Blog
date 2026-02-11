@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Search, Menu, X } from "lucide-react";
 import SearchModal from "./SearchModal";
+import ThemeToggle from "./ThemeToggle";
 
 const navLinks = [
   { label: "Writing", to: "/writing" },
@@ -74,10 +75,12 @@ export default function Navbar() {
             >
               <Search size={14} />
             </button>
+            <ThemeToggle />
           </div>
 
           {/* Mobile */}
           <div className="flex md:hidden items-center gap-1">
+            <ThemeToggle />
             <button className="p-1.5 text-muted-foreground" onClick={() => setSearchOpen(true)}>
               <Search size={16} />
             </button>

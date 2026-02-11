@@ -7,6 +7,7 @@ import { CompactRow } from "@/components/PostCard";
 import { mdxComponents } from "@/components/MdxComponents";
 import Backlinks from "@/components/Backlinks";
 import GraphView from "@/components/GraphView";
+import TableOfContents from "@/components/TableOfContents";
 import { ArrowLeft, Link as LinkIcon, Check, Clock, Calendar } from "lucide-react";
 
 export default function ArticleDetail() {
@@ -78,6 +79,9 @@ export default function ArticleDetail() {
             </span>
           </div>
         </header>
+
+        {/* Table of Contents */}
+        <TableOfContents />
 
         {/* Content */}
         <article className="prose-article animate-fade-in">

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { getReadBySlug } from "@/content";
 import { mdxComponents } from "@/components/MdxComponents";
 import { ArrowLeft, ExternalLink, Link as LinkIcon, Check } from "lucide-react";
+import TableOfContents from "@/components/TableOfContents";
 
 export default function ReadDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -70,6 +71,8 @@ export default function ReadDetail() {
             </a>
           </div>
         </header>
+
+        <TableOfContents />
 
         <article className="prose-article animate-fade-in">
           <MdxContent components={mdxComponents} />
