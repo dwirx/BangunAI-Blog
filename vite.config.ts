@@ -4,7 +4,9 @@ import mdx from "@mdx-js/rollup";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypePrettyCode from "rehype-pretty-code";
+import rehypeKatex from "rehype-katex";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
@@ -21,8 +23,9 @@ export default defineConfig(({ mode }) => ({
     {
       enforce: "pre" as const,
       ...mdx({
-        remarkPlugins: [remarkFrontmatter, remarkMdxFrontmatter, remarkGfm],
+        remarkPlugins: [remarkFrontmatter, remarkMdxFrontmatter, remarkGfm, remarkMath],
         rehypePlugins: [
+          rehypeKatex,
           [rehypePrettyCode, {
             theme: "github-dark-dimmed",
             keepBackground: true,

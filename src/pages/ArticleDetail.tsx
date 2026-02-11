@@ -5,6 +5,8 @@ import { getRelatedPosts } from "@/data/posts";
 import TypeBadge from "@/components/TypeBadge";
 import { CompactRow } from "@/components/PostCard";
 import { mdxComponents } from "@/components/MdxComponents";
+import Backlinks from "@/components/Backlinks";
+import GraphView from "@/components/GraphView";
 import { ArrowLeft, Link as LinkIcon, Check, Clock, Calendar } from "lucide-react";
 
 export default function ArticleDetail() {
@@ -102,6 +104,14 @@ export default function ArticleDetail() {
             {copied ? <Check size={13} className="text-green-400" /> : <LinkIcon size={13} />}
             {copied ? "Tersalin!" : "Copy link"}
           </button>
+        </div>
+
+        {/* Backlinks */}
+        <Backlinks slug={slug || ""} />
+
+        {/* Graph View */}
+        <div className="max-w-[68ch] mx-auto mt-10">
+          <GraphView currentSlug={slug} />
         </div>
 
         {/* Related */}
