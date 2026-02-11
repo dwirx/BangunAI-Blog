@@ -1,8 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getReadBySlug } from "@/content";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { mdxComponents } from "@/components/MdxComponents";
 import { ArrowLeft, ExternalLink, Link as LinkIcon, Check } from "lucide-react";
 
@@ -17,7 +15,7 @@ export default function ReadDetail() {
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       if (docHeight > 0) setProgress((window.scrollY / docHeight) * 100);
     };
-    window.addEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
@@ -25,12 +23,9 @@ export default function ReadDetail() {
 
   if (!item) {
     return (
-      <div className="min-h-screen">
-        <Navbar />
-        <div className="container mx-auto px-6 pt-32 text-center">
-          <p className="text-muted-foreground">Bacaan tidak ditemukan.</p>
-          <Link to="/read" className="text-accent mt-4 inline-block">Kembali ke Read</Link>
-        </div>
+      <div className="container mx-auto px-6 pt-32 text-center">
+        <p className="text-muted-foreground">Bacaan tidak ditemukan.</p>
+        <Link to="/read" className="text-accent mt-4 inline-block">Kembali ke Read</Link>
       </div>
     );
   }
@@ -44,62 +39,62 @@ export default function ReadDetail() {
   const MdxContent = item.Component as React.ComponentType<{ components?: Record<string, React.ComponentType<any>> }>;
 
   return (
-    <div className="min-h-screen">
+    <>
       {item.hasBody && <div className="reading-progress" style={{ width: `${progress}%` }} />}
-      <Navbar />
 
-      <main className="container mx-auto px-6 pt-28 pb-12">
-        <Link to="/read" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8">
-          <ArrowLeft size={16} />
-          Kembali ke Read
-        </Link>
+      <div className="container mx-auto px-6 pt-24 pb-16">
+        <div className="max-w-[68ch] mx-auto mb-10">
+          <Link to="/read" className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground/60 hover:text-foreground transition-colors">
+            <ArrowLeft size={14} />
+            Kembali ke Read
+          </Link>
+        </div>
 
-        <header className="max-w-[68ch] mx-auto mb-12">
-          <h1 className="font-heading text-3xl md:text-4xl font-bold mb-4 leading-tight">{item.title}</h1>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground mb-6">
+        <header className="max-w-[68ch] mx-auto mb-14">
+          <h1 className="font-heading text-3xl md:text-[2.5rem] font-bold leading-[1.15] mb-5">{item.title}</h1>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground/50 mb-6">
             <span>{new Date(item.date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
             <span>·</span>
             <span>{item.source}</span>
           </div>
-          <p className="text-muted-foreground text-lg font-serif leading-relaxed">{item.snippet}</p>
+          <p className="text-muted-foreground text-base font-serif leading-relaxed">{item.snippet}</p>
           <div className="mt-6">
             <a
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm glass glass-hover rounded-xl text-accent hover:opacity-80 transition"
+              className="inline-flex items-center gap-1.5 text-xs text-accent hover:opacity-80 transition"
             >
-              <ExternalLink size={16} />
+              <ExternalLink size={13} />
               Baca sumber asli
             </a>
           </div>
         </header>
 
-        <article className="prose-article">
+        <article className="prose-article animate-fade-in">
           <MdxContent components={mdxComponents} />
         </article>
 
         {item.tags.length > 0 && (
-          <div className="max-w-[68ch] mx-auto mt-8 flex flex-wrap gap-2">
+          <div className="max-w-[68ch] mx-auto mt-10 flex flex-wrap gap-2">
             {item.tags.map((tag) => (
-              <span key={tag} className="text-xs px-3 py-1 rounded-full bg-secondary text-muted-foreground">
+              <span key={tag} className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full bg-secondary/60 text-muted-foreground/60">
                 {tag}
               </span>
             ))}
           </div>
         )}
 
-        <div className="max-w-[68ch] mx-auto mt-8 pt-8 border-t border-border">
+        <div className="max-w-[68ch] mx-auto mt-10 pt-8 border-t border-border/40">
           <button
             onClick={handleCopyLink}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm glass glass-hover rounded-xl text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground/60 hover:text-foreground rounded-lg hover:bg-secondary/50 transition-all"
           >
-            {copied ? <Check size={16} /> : <LinkIcon size={16} />}
+            {copied ? <Check size={13} className="text-green-400" /> : <LinkIcon size={13} />}
             {copied ? "Tersalin!" : "Copy link"}
           </button>
         </div>
-      </main>
-      <Footer />
-    </div>
+      </div>
+    </>
   );
 }

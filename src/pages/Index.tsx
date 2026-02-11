@@ -3,8 +3,6 @@ import { ArrowRight } from "lucide-react";
 import { getFeaturedPosts, getLatestPosts, readItems } from "@/data/posts";
 import { FeaturedCard, CompactRow } from "@/components/PostCard";
 import ReadItemCard from "@/components/ReadItemCard";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import auroraBg from "@/assets/aurora-bg.jpg";
 
 export default function Index() {
@@ -13,14 +11,13 @@ export default function Index() {
   const nowReading = readItems.slice(0, 3);
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
-
+    <>
       {/* Hero */}
-      <section className="relative pt-32 pb-20 overflow-hidden">
+      <section className="relative pt-28 pb-20 overflow-hidden">
         <img
           src={auroraBg}
           alt=""
+          loading="eager"
           className="absolute inset-0 w-full h-full object-cover opacity-40"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
@@ -92,8 +89,6 @@ export default function Index() {
           ))}
         </div>
       </section>
-
-      <Footer />
-    </div>
+    </>
   );
 }
