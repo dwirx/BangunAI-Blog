@@ -1,9 +1,27 @@
+import { Link } from "react-router-dom";
 import { ReadItem } from "@/data/posts";
 import { ExternalLink } from "lucide-react";
 
 export default function ReadItemCard({ item }: { item: ReadItem }) {
+  const hasContent = !!item.content;
+
+  const CardWrapper = ({ children }: { children: React.ReactNode }) => {
+    if (hasContent) {
+      return (
+        <Link to={`/read/${item.slug}`} className="glass-card group block transition-all hover:bg-[hsl(var(--glass-bg-hover))]">
+          {children}
+        </Link>
+      );
+    }
+    return (
+      <div className="glass-card group transition-all hover:bg-[hsl(var(--glass-bg-hover))]">
+        {children}
+      </div>
+    );
+  };
+
   return (
-    <div className="glass-card group transition-all hover:bg-[hsl(var(--glass-bg-hover))]">
+    <CardWrapper>
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <h3 className="font-heading text-base font-semibold mb-1 group-hover:text-accent transition-colors">
@@ -14,6 +32,12 @@ export default function ReadItemCard({ item }: { item: ReadItem }) {
             <span>{new Date(item.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</span>
             <span>·</span>
             <span>{item.source}</span>
+            {hasContent && (
+              <>
+                <span>·</span>
+                <span className="text-accent">Ada catatan</span>
+              </>
+            )}
           </div>
         </div>
         <a
@@ -35,6 +59,6 @@ export default function ReadItemCard({ item }: { item: ReadItem }) {
           ))}
         </div>
       )}
-    </div>
+    </CardWrapper>
   );
 }

@@ -73,7 +73,7 @@ export default function Read() {
 
         <div className="grid md:grid-cols-2 gap-5">
           {filtered.map((item) => (
-            <ReadItemCard key={item.id} item={item} />
+            <ReadItemCard key={item.slug} item={item} />
           ))}
         </div>
 

@@ -11,6 +11,7 @@ interface SearchResult {
   url: string;
   postType?: "note" | "essay" | "article";
   source?: string;
+  hasContent?: boolean;
 }
 
 export default function SearchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -40,8 +41,9 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
         type: "read" as const,
         title: r.title,
         summary: r.snippet,
-        url: r.url,
+        url: r.content ? `/read/${r.slug}` : r.url,
         source: r.source,
+        hasContent: !!r.content,
       }));
 
     setResults([...postResults, ...readResults].slice(0, 10));
@@ -62,7 +64,6 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
     const handleKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        if (open) onClose(); else onClose(); // toggle handled by parent
       }
     };
     window.addEventListener("keydown", handleKey);
@@ -74,14 +75,14 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
     if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex((i) => Math.max(i - 1, 0)); }
     if (e.key === "Enter" && results[selectedIndex]) {
       const r = results[selectedIndex];
-      if (r.type === "read") window.open(r.url, "_blank");
+      if (r.type === "read" && !r.hasContent) window.open(r.url, "_blank");
       else { navigate(r.url); onClose(); }
     }
     if (e.key === "Escape") onClose();
   };
 
   const handleSelect = (r: SearchResult) => {
-    if (r.type === "read") window.open(r.url, "_blank");
+    if (r.type === "read" && !r.hasContent) window.open(r.url, "_blank");
     else { navigate(r.url); onClose(); }
   };
 
@@ -89,13 +90,9 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
 
   return (
     <div className="fixed inset-0 z-[200]">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Modal */}
       <div className="relative max-w-xl mx-auto mt-[15vh] px-4">
         <div className="glass-card p-0 overflow-hidden shadow-2xl">
-          {/* Input */}
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
             <Search size={18} className="text-muted-foreground flex-shrink-0" />
             <input
@@ -106,12 +103,9 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
               placeholder="Cari tulisan, artikel, atau bacaan..."
               className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground outline-none text-sm"
             />
-            <kbd className="hidden md:inline-flex text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
-              ESC
-            </kbd>
+            <kbd className="hidden md:inline-flex text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">ESC</kbd>
           </div>
 
-          {/* Results */}
           {results.length > 0 && (
             <div className="max-h-[50vh] overflow-y-auto p-2">
               {results.map((r, i) => (

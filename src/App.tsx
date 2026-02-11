@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Writing from "./pages/Writing";
 import Articles from "./pages/Articles";
 import Read from "./pages/Read";
+import ReadDetail from "./pages/ReadDetail";
 import About from "./pages/About";
 import ArticleDetail from "./pages/ArticleDetail";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/artikel" element={<Articles />} />
           <Route path="/artikel/:slug" element={<ArticleDetail />} />
           <Route path="/read" element={<Read />} />
+          <Route path="/read/:slug" element={<ReadDetail />} />
           <Route path="/about" element={<About />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
