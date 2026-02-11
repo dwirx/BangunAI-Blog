@@ -1,5 +1,5 @@
 // Re-export types and provide helper functions
-// All content is auto-loaded from src/content/ via import.meta.glob
+// All content is auto-loaded from src/content/*.mdx via import.meta.glob
 
 export type { Post, PostType, Category, ReadItem } from "./types";
 export { categories } from "./types";

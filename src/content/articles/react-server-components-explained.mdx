@@ -1,0 +1,49 @@
+---
+title: "React Server Components, Explained Simply"
+slug: react-server-components-explained
+summary: "Penjelasan sederhana tentang RSC tanpa jargon berlebihan."
+type: article
+category: Coding
+tags: [react, rsc, frontend]
+date: "2026-01-28"
+readingTime: 10
+featured: true
+---
+
+## Apa itu Server Components?
+
+React Server Components (RSC) memungkinkan komponen di-render di server. Ini **bukan** SSR tradisional.
+
+## Perbedaan RSC vs SSR
+
+- **SSR**: Render HTML di server → kirim ke client → hydrate
+- **RSC**: Komponen *tetap* di server, tidak dikirim sebagai JavaScript
+
+## Kapan Pakai Mana?
+
+### Server Component (default)
+- Fetch data
+- Akses backend langsung
+
+### Client Component (`"use client"`)
+- Event handler
+- State dan effects
+
+```tsx
+// Server Component
+async function PostList() {
+  const posts = await db.posts.findMany();
+  return <ul>{posts.map(p => <li key={p.id}>{p.title}</li>)}</ul>;
+}
+
+// Client Component
+"use client";
+function LikeButton() {
+  const [liked, setLiked] = useState(false);
+  return <button onClick={() => setLiked(!liked)}>❤️</button>;
+}
+```
+
+## Kesimpulan
+
+RSC memisahkan "apa yang butuh JavaScript" dan "apa yang bisa tetap di server". Hasilnya: app lebih cepat.

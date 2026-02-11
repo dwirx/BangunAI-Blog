@@ -1,0 +1,53 @@
+---
+title: "Docker Compose Cheatsheet untuk Pemula"
+slug: docker-compose-cheatsheet
+summary: "Referensi cepat untuk docker-compose yang sering saya pakai."
+type: note
+category: Tech
+tags: [docker, devops, cheatsheet]
+date: "2025-12-05"
+readingTime: 4
+---
+
+## Basic Commands
+
+```bash
+docker compose up -d        # Start semua services
+docker compose down          # Stop semua
+docker compose up -d --build # Rebuild
+docker compose logs -f       # Lihat logs
+docker compose exec app bash # Masuk ke container
+```
+
+## Template docker-compose.yml
+
+```yaml
+version: "3.8"
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
+```
+
+## Tips
+
+- Selalu pakai `-d` untuk production
+- Pakai `.env` file untuk secrets
+- Volume untuk data persistence

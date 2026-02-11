@@ -1,8 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { getPostBySlug, getRelatedPosts } from "@/data/posts";
+import { getContentBySlug } from "@/content";
+import { getRelatedPosts } from "@/data/posts";
 import TypeBadge from "@/components/TypeBadge";
 import { CompactRow } from "@/components/PostCard";
 import Navbar from "@/components/Navbar";
@@ -11,7 +10,7 @@ import { ArrowLeft, Link as LinkIcon, Check } from "lucide-react";
 
 export default function ArticleDetail() {
   const { slug } = useParams<{ slug: string }>();
-  const post = getPostBySlug(slug || "");
+  const post = getContentBySlug(slug || "");
   const related = getRelatedPosts(slug || "", 3);
   const [progress, setProgress] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -25,9 +24,7 @@ export default function ArticleDetail() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [slug]);
+  useEffect(() => { window.scrollTo(0, 0); }, [slug]);
 
   if (!post) {
     return (
@@ -48,6 +45,7 @@ export default function ArticleDetail() {
   };
 
   const backLink = post.type === "article" ? "/artikel" : "/writing";
+  const MdxContent = post.Component;
 
   return (
     <div className="min-h-screen">
@@ -74,17 +72,9 @@ export default function ArticleDetail() {
         </header>
 
         <article className="prose-article">
-          {post.content ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
-          ) : (
-            <>
-              <p>{post.summary}</p>
-              <p className="text-muted-foreground italic">Konten lengkap akan segera tersedia.</p>
-            </>
-          )}
+          <MdxContent />
         </article>
 
-        {/* Copy link */}
         <div className="max-w-[68ch] mx-auto mt-12 pt-8 border-t border-border">
           <button
             onClick={handleCopyLink}
@@ -95,7 +85,6 @@ export default function ArticleDetail() {
           </button>
         </div>
 
-        {/* Related */}
         {related.length > 0 && (
           <div className="max-w-[68ch] mx-auto mt-16">
             <h2 className="font-heading text-xl font-bold mb-6">Tulisan Terkait</h2>
