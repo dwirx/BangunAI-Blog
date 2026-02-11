@@ -336,70 +336,82 @@
 
 /* Light mode overrides */
 .light .prose-article {
-  color: hsl(228 25% 20%);
+  color: hsl(228 20% 30%);
 }
 
 .light .prose-article p,
 .light .prose-article li {
-  color: hsl(228 20% 25%);
+  color: hsl(228 15% 32%);
 }
 
 .light .prose-article h1,
 .light .prose-article h2,
 .light .prose-article h3,
 .light .prose-article h4 {
-  color: hsl(228 30% 12%);
+  color: hsl(228 25% 15%);
 }
 
 .light .prose-article h2 {
-  border-color: hsl(228 15% 82%);
+  border-color: hsl(228 12% 85%);
 }
 
 .light .prose-article blockquote {
-  color: hsl(228 15% 40%);
-  border-color: hsl(263 70% 50%);
+  color: hsl(228 12% 42%);
+  border-color: hsl(263 60% 55%);
 }
 
 .light .prose-article a {
-  color: hsl(199 75% 35%);
-  text-decoration-color: hsl(199 75% 35% / 0.4);
+  color: hsl(199 70% 38%);
+  text-decoration-color: hsl(199 70% 38% / 0.35);
 }
 
 .light .prose-article a:hover {
-  text-decoration-color: hsl(199 75% 35%);
+  text-decoration-color: hsl(199 70% 38%);
 }
 
 .light .prose-article strong {
-  color: hsl(228 30% 12%);
+  color: hsl(228 25% 15%);
 }
 
 .light .prose-article .code-block-wrapper pre,
 .light .prose-article pre {
-  background: hsl(228 20% 95%) !important;
-  border-color: hsl(228 15% 87%);
-  color: hsl(228 25% 20%);
+  background: hsl(230 25% 95%) !important;
+  border-color: hsl(228 18% 88%);
+  color: hsl(228 20% 28%);
 }
 
 .light .prose-article .code-block-wrapper pre code,
 .light .prose-article pre code {
-  color: hsl(228 25% 20%);
+  color: hsl(228 20% 28%);
+}
+
+/* Shiki token overrides for light mode */
+.light .prose-article pre code [style*="color"] {
+  filter: saturate(1.3) brightness(0.65);
 }
 
 .light .prose-article code {
-  background: hsl(228 15% 91%);
-  color: hsl(263 65% 45%);
+  background: hsl(228 18% 92%);
+  color: hsl(263 55% 42%);
 }
 
 .light .prose-article hr {
-  border-color: hsl(228 15% 85%);
+  border-color: hsl(228 12% 87%);
 }
 
 .light .prose-article table th {
-  border-color: hsl(228 15% 80%);
+  border-color: hsl(228 12% 82%);
+  color: hsl(228 25% 15%);
 }
 
 .light .prose-article table td {
-  border-color: hsl(228 15% 88%);
+  border-color: hsl(228 12% 90%);
+  color: hsl(228 15% 32%);
+}
+
+/* Mermaid SVG overrides for light */
+.light .mermaid-container svg {
+  max-width: 100%;
 }
 
 /* Smooth theme transition - exclude animations/transforms */
@@ -410,6 +422,7 @@
 }
 
 /* Exclude elements where transition causes issues */
-.animate-fade-in, .animate-slide-up, [class*="animate-"] {
+.animate-fade-in, .animate-slide-up, [class*="animate-"],
+canvas, svg, .mermaid-container {
   transition: none !important;
 }
