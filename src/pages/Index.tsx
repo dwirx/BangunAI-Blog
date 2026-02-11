@@ -88,7 +88,7 @@ export default function Index() {
         </div>
         <div className="grid md:grid-cols-3 gap-5">
           {nowReading.map((item) => (
-            <ReadItemCard key={item.id} item={item} />
+            <ReadItemCard key={item.slug} item={item} />
           ))}
         </div>
       </section>

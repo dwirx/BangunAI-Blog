@@ -1,4 +1,4 @@
-import { Post } from "@/data/posts";
+import { Post } from "@/data/types";
 
 const post: Post = {
   slug: "belajar-bahasa-jepang",

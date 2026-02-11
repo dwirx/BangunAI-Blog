@@ -100,15 +100,25 @@
   }
 
   .prose-article {
-    @apply font-serif text-lg leading-[1.75] max-w-[68ch] mx-auto;
+    @apply font-serif text-lg leading-[1.8] max-w-[68ch] mx-auto;
+    color: hsl(var(--foreground));
+  }
+
+  .prose-article > *:first-child {
+    @apply mt-0;
   }
 
   .prose-article p {
     @apply mb-6;
   }
 
+  .prose-article h1 {
+    @apply font-sans text-3xl font-bold mt-14 mb-5;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
   .prose-article h2 {
-    @apply font-sans text-2xl font-bold mt-12 mb-4;
+    @apply font-sans text-2xl font-bold mt-12 mb-4 pb-2 border-b border-border;
     font-family: 'Space Grotesk', sans-serif;
   }
 
@@ -117,32 +127,88 @@
     font-family: 'Space Grotesk', sans-serif;
   }
 
+  .prose-article h4 {
+    @apply font-sans text-lg font-semibold mt-6 mb-2;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
   .prose-article blockquote {
-    @apply border-l-2 border-primary pl-6 italic my-8 text-muted-foreground;
+    @apply border-l-2 border-primary pl-6 italic my-8 py-1;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .prose-article blockquote p {
+    @apply mb-0;
   }
 
   .prose-article code {
-    @apply font-mono text-sm bg-secondary px-1.5 py-0.5 rounded;
+    @apply font-mono text-sm px-1.5 py-0.5 rounded;
+    background: hsl(var(--secondary));
+    color: hsl(var(--accent));
   }
 
   .prose-article pre {
-    @apply font-mono text-sm bg-secondary rounded-xl p-5 my-8 overflow-x-auto;
+    @apply font-mono text-sm rounded-2xl p-5 my-8 overflow-x-auto border border-border;
+    background: hsl(var(--secondary));
   }
 
   .prose-article pre code {
     @apply bg-transparent p-0;
+    color: hsl(var(--foreground));
   }
 
   .prose-article a {
-    @apply text-accent underline underline-offset-4 hover:opacity-80 transition-opacity;
+    @apply text-accent underline underline-offset-4 decoration-accent/40 hover:decoration-accent transition-all;
   }
 
-  .prose-article ul, .prose-article ol {
-    @apply my-6 pl-6;
+  .prose-article ul {
+    @apply my-6 pl-6 list-disc;
+  }
+
+  .prose-article ol {
+    @apply my-6 pl-6 list-decimal;
   }
 
   .prose-article li {
-    @apply mb-2;
+    @apply mb-2 pl-1;
+  }
+
+  .prose-article li > ul, .prose-article li > ol {
+    @apply mt-2 mb-0;
+  }
+
+  .prose-article strong {
+    @apply font-bold;
+    color: hsl(var(--foreground));
+  }
+
+  .prose-article em {
+    @apply italic;
+  }
+
+  .prose-article hr {
+    @apply my-12 border-border;
+  }
+
+  .prose-article img {
+    @apply rounded-2xl my-8;
+  }
+
+  .prose-article table {
+    @apply w-full my-8 text-sm;
+  }
+
+  .prose-article th {
+    @apply text-left font-semibold py-2 px-3 border-b-2 border-border;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  .prose-article td {
+    @apply py-2 px-3 border-b border-border;
+  }
+
+  .prose-article input[type="checkbox"] {
+    @apply mr-2 accent-primary;
   }
 
   .reading-progress {

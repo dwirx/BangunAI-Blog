@@ -1,42 +1,34 @@
-// Content registry — import all post files here
-// To add a new post: create a .ts file in the appropriate folder and import it here
+// Auto-detect content registry using import.meta.glob
+// To add new content: just create a .ts file in the appropriate folder
+// No manual imports needed — files are auto-detected!
 
-import belajarBahasaJepang from "./writing/belajar-bahasa-jepang";
-import catatanBelajarRust from "./writing/catatan-belajar-rust-minggu-1";
-import setupNeovim from "./writing/setup-neovim-2026";
-import digitalMinimalism from "./writing/digital-minimalism-catatan";
-import dockerCompose from "./writing/docker-compose-cheatsheet";
-import menulisSebagaiBerpikir from "./writing/menulis-sebagai-berpikir";
-import produktivitas from "./writing/produktivitas-bukan-soal-tools";
-import arch from "./writing/kenapa-saya-pakai-arch";
-import berpikir from "./writing/berpikir-sistematis";
-import socialMedia from "./writing/hidup-tanpa-social-media";
+import type { Post, ReadItem } from "@/data/types";
 
-import linuxWorkflow from "./articles/membangun-workflow-linux-ideal";
-import rsc from "./articles/react-server-components-explained";
-import tailwindTips from "./articles/tailwind-tips-cepat";
-import tsGenerics from "./articles/typescript-generics-guide";
+// Auto-import all writing content files
+const writingModules = import.meta.glob<{ default: Post }>("./writing/*.ts", { eager: true });
 
-import type { Post } from "@/data/posts";
+// Auto-import all article content files
+const articleModules = import.meta.glob<{ default: Post }>("./articles/*.ts", { eager: true });
 
-// All content posts with their markdown content
-export const contentPosts: Post[] = [
-  belajarBahasaJepang,
-  catatanBelajarRust,
-  setupNeovim,
-  digitalMinimalism,
-  dockerCompose,
-  menulisSebagaiBerpikir,
-  produktivitas,
-  arch,
-  berpikir,
-  socialMedia,
-  linuxWorkflow,
-  rsc,
-  tailwindTips,
-  tsGenerics,
-];
+// Auto-import all read content files
+const readModules = import.meta.glob<{ default: ReadItem }>("./read/*.ts", { eager: true });
+
+// Extract posts from modules
+export const writingPosts: Post[] = Object.values(writingModules).map((m) => m.default);
+export const articlePosts: Post[] = Object.values(articleModules).map((m) => m.default);
+export const allPosts: Post[] = [...writingPosts, ...articlePosts].sort(
+  (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+);
+
+// Extract read items from modules
+export const allReadItems: ReadItem[] = Object.values(readModules)
+  .map((m) => m.default)
+  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 export function getContentBySlug(slug: string): Post | undefined {
-  return contentPosts.find((p) => p.slug === slug);
+  return allPosts.find((p) => p.slug === slug);
+}
+
+export function getReadBySlug(slug: string): ReadItem | undefined {
+  return allReadItems.find((r) => r.slug === slug);
 }
