@@ -1,5 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { getPostBySlug, getRelatedPosts } from "@/data/posts";
 import TypeBadge from "@/components/TypeBadge";
 import { CompactRow } from "@/components/PostCard";
@@ -22,6 +24,10 @@ export default function ArticleDetail() {
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [slug]);
 
   if (!post) {
     return (
@@ -69,17 +75,7 @@ export default function ArticleDetail() {
 
         <article className="prose-article">
           {post.content ? (
-            post.content.split("\n\n").map((block, i) => {
-              if (block.startsWith("## ")) return <h2 key={i}>{block.replace("## ", "")}</h2>;
-              if (block.startsWith("### ")) return <h3 key={i}>{block.replace("### ", "")}</h3>;
-              if (block.startsWith("> ")) return <blockquote key={i}><p>{block.replace("> ", "")}</p></blockquote>;
-              if (block.startsWith("```")) {
-                const lines = block.split("\n");
-                const code = lines.slice(1, -1).join("\n");
-                return <pre key={i}><code>{code}</code></pre>;
-              }
-              return <p key={i}>{block}</p>;
-            })
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
           ) : (
             <>
               <p>{post.summary}</p>
