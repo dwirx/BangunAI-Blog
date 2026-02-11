@@ -3,7 +3,6 @@ import { ArrowRight } from "lucide-react";
 import { getFeaturedPosts, getLatestPosts, readItems } from "@/data/posts";
 import { FeaturedCard, CompactRow } from "@/components/PostCard";
 import ReadItemCard from "@/components/ReadItemCard";
-import auroraBg from "@/assets/aurora-bg.jpg";
 
 export default function Index() {
   const featured = getFeaturedPosts();
@@ -12,44 +11,8 @@ export default function Index() {
 
   return (
     <>
-      {/* Hero */}
-      <section className="relative pt-28 pb-20 overflow-hidden">
-        <img
-          src={auroraBg}
-          alt=""
-          loading="eager"
-          className="absolute inset-0 w-full h-full object-cover opacity-40"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
-        <div className="relative container mx-auto px-6">
-          <div className="glass-card max-w-2xl mx-auto text-center py-12">
-            <h1 className="font-heading text-4xl md:text-5xl font-bold mb-4 leading-tight">
-              Notes, essay, dan artikel<br />
-              <span className="text-primary">campuran</span> — nyaman dibaca
-            </h1>
-            <p className="text-muted-foreground text-lg mb-8 max-w-md mx-auto">
-              Tempat saya menulis tentang teknologi, produktivitas, dan kehidupan. Ditulis untuk dibaca pelan-pelan.
-            </p>
-            <div className="flex items-center justify-center gap-3">
-              <Link
-                to="/writing"
-                className="px-6 py-3 rounded-[14px] bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
-              >
-                Mulai Baca
-              </Link>
-              <Link
-                to="/read"
-                className="px-6 py-3 rounded-[14px] glass glass-hover text-foreground font-medium text-sm"
-              >
-                Lihat Read
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Featured */}
-      <section className="container mx-auto px-6 mb-20">
+      <section className="container mx-auto px-6 pt-24 mb-20">
         <div className="flex items-center justify-between mb-8">
           <h2 className="font-heading text-2xl font-bold">Featured</h2>
         </div>
