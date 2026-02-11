@@ -49,8 +49,9 @@ export default function Navbar() {
         }`}
       >
         <div className="container mx-auto flex items-center justify-between px-6">
-          <Link to="/" className="font-heading text-base font-semibold tracking-tight text-foreground">
-            aurora<span className="text-primary">.</span>
+          <Link to="/" className="flex items-center gap-2 font-heading text-base font-semibold tracking-tight text-foreground">
+            <img src="/favicon.png" alt="BangunAI" className="w-6 h-6 rounded" />
+            BangunAI
           </Link>
 
           {/* Desktop nav */}
