@@ -13,6 +13,7 @@ const Read = lazy(() => import("./pages/Read"));
 const ReadDetail = lazy(() => import("./pages/ReadDetail"));
 const About = lazy(() => import("./pages/About"));
 const ArticleDetail = lazy(() => import("./pages/ArticleDetail"));
+const Tags = lazy(() => import("./pages/Tags"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const GraphPage = lazy(() => import("./pages/GraphPage"));
 
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/read" element={<Read />} />
               <Route path="/read/:slug" element={<ReadDetail />} />
               <Route path="/about" element={<About />} />
+              <Route path="/tags" element={<Tags />} />
               <Route path="/graph" element={<GraphPage />} />
               <Route path="*" element={<NotFound />} />
             </Route>

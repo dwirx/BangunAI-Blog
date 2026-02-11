@@ -6,6 +6,7 @@ import TypeBadge from "@/components/TypeBadge";
 import { CompactRow } from "@/components/PostCard";
 import { mdxComponents } from "@/components/MdxComponents";
 import Backlinks from "@/components/Backlinks";
+import TagLink from "@/components/TagLink";
 import GraphView from "@/components/GraphView";
 import TableOfContents from "@/components/TableOfContents";
 import { ArrowLeft, Link as LinkIcon, Check, Clock, Calendar } from "lucide-react";
@@ -92,9 +93,7 @@ export default function ArticleDetail() {
         {post.tags && post.tags.length > 0 && (
           <div className="max-w-[68ch] mx-auto mt-10 flex flex-wrap gap-2">
             {post.tags.map((tag) => (
-              <span key={tag} className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full bg-secondary/60 text-muted-foreground/60">
-                {tag}
-              </span>
+              <TagLink key={tag} tag={tag} />
             ))}
           </div>
         )}

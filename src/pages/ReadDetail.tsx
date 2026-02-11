@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { getReadBySlug } from "@/content";
 import { mdxComponents } from "@/components/MdxComponents";
 import { ArrowLeft, ExternalLink, Link as LinkIcon, Check } from "lucide-react";
+import TagLink from "@/components/TagLink";
 import TableOfContents from "@/components/TableOfContents";
 
 export default function ReadDetail() {
@@ -81,9 +82,7 @@ export default function ReadDetail() {
         {item.tags.length > 0 && (
           <div className="max-w-[68ch] mx-auto mt-10 flex flex-wrap gap-2">
             {item.tags.map((tag) => (
-              <span key={tag} className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full bg-secondary/60 text-muted-foreground/60">
-                {tag}
-              </span>
+              <TagLink key={tag} tag={tag} />
             ))}
           </div>
         )}
