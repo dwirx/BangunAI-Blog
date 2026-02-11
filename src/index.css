@@ -334,21 +334,82 @@
   }
 }
 
-/* Light mode overrides for prose code blocks */
+/* Light mode overrides */
+.light .prose-article {
+  color: hsl(228 25% 20%);
+}
+
+.light .prose-article p,
+.light .prose-article li {
+  color: hsl(228 20% 25%);
+}
+
+.light .prose-article h1,
+.light .prose-article h2,
+.light .prose-article h3,
+.light .prose-article h4 {
+  color: hsl(228 30% 12%);
+}
+
+.light .prose-article h2 {
+  border-color: hsl(228 15% 82%);
+}
+
+.light .prose-article blockquote {
+  color: hsl(228 15% 40%);
+  border-color: hsl(263 70% 50%);
+}
+
+.light .prose-article a {
+  color: hsl(199 75% 35%);
+  text-decoration-color: hsl(199 75% 35% / 0.4);
+}
+
+.light .prose-article a:hover {
+  text-decoration-color: hsl(199 75% 35%);
+}
+
+.light .prose-article strong {
+  color: hsl(228 30% 12%);
+}
+
 .light .prose-article .code-block-wrapper pre,
 .light .prose-article pre {
-  background: hsl(228 15% 93%) !important;
-  border-color: hsl(228 15% 85%);
+  background: hsl(228 20% 95%) !important;
+  border-color: hsl(228 15% 87%);
+  color: hsl(228 25% 20%);
+}
+
+.light .prose-article .code-block-wrapper pre code,
+.light .prose-article pre code {
+  color: hsl(228 25% 20%);
 }
 
 .light .prose-article code {
-  background: hsl(var(--secondary));
-  color: hsl(263 70% 50%);
+  background: hsl(228 15% 91%);
+  color: hsl(263 65% 45%);
 }
 
-/* Smooth theme transition */
+.light .prose-article hr {
+  border-color: hsl(228 15% 85%);
+}
+
+.light .prose-article table th {
+  border-color: hsl(228 15% 80%);
+}
+
+.light .prose-article table td {
+  border-color: hsl(228 15% 88%);
+}
+
+/* Smooth theme transition - exclude animations/transforms */
 *, *::before, *::after {
-  transition-property: background-color, border-color, color;
-  transition-duration: 0.3s;
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 0.25s;
   transition-timing-function: ease;
+}
+
+/* Exclude elements where transition causes issues */
+.animate-fade-in, .animate-slide-up, [class*="animate-"] {
+  transition: none !important;
 }
