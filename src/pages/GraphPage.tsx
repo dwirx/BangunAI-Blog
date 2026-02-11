@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { allPosts } from "@/content";
-import { ZoomIn, ZoomOut, Maximize2, Search } from "lucide-react";
+import { ZoomIn, ZoomOut, Maximize2, Search, ArrowLeft } from "lucide-react";
 
 interface Node {
   id: string;
@@ -26,6 +26,7 @@ interface Edge {
 
 export default function GraphPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
@@ -41,11 +42,15 @@ export default function GraphPage() {
   hoveredRef.current = hoveredNode;
   const selectedRef = useRef(selectedNode);
   selectedRef.current = selectedNode;
+  const sizeRef = useRef({ w: 800, h: 600 });
+
+  // Touch state
+  const lastTouchDist = useRef(0);
+  const touchDragging = useRef(false);
 
   const { nodes, edges } = useMemo(() => {
     const nodeList: Node[] = [];
     const edgeList: Edge[] = [];
-    const cx = 0, cy = 0;
 
     allPosts.forEach((p, i) => {
       const angle = (i / allPosts.length) * Math.PI * 2;
@@ -54,8 +59,8 @@ export default function GraphPage() {
         id: p.slug,
         label: p.title.length > 25 ? p.title.slice(0, 25) + "…" : p.title,
         fullLabel: p.title,
-        x: cx + Math.cos(angle) * radius,
-        y: cy + Math.sin(angle) * radius,
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius,
         vx: 0, vy: 0,
         type: p.type,
         slug: p.slug,
@@ -83,6 +88,30 @@ export default function GraphPage() {
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
 
+  // HiDPI resize
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = container.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      sizeRef.current = { w, h };
+    };
+
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
+
   // Force simulation
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -91,23 +120,13 @@ export default function GraphPage() {
     if (!ctx) return;
 
     let animId: number;
-    const dpr = window.devicePixelRatio || 1;
-
-    const resize = () => {
-      const rect = canvas.parentElement!.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      canvas.style.width = rect.width + "px";
-      canvas.style.height = rect.height + "px";
-    };
-    resize();
-    window.addEventListener("resize", resize);
 
     const tick = () => {
       const ns = nodesRef.current;
       const t = transformRef.current;
-      const W = canvas.width / dpr;
-      const H = canvas.height / dpr;
+      const dpr = window.devicePixelRatio || 1;
+      const W = sizeRef.current.w;
+      const H = sizeRef.current.h;
       const hovered = hoveredRef.current;
       const selected = selectedRef.current;
 
@@ -147,18 +166,18 @@ export default function GraphPage() {
         n.y += n.vy;
       });
 
-      // Draw
+      // Draw with HiDPI
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
 
-      // Background grid
       ctx.save();
       ctx.translate(W / 2 + t.x, H / 2 + t.y);
       ctx.scale(t.scale, t.scale);
 
+      // Grid
       const gridSize = 50;
       const gridRange = 1000;
-      ctx.strokeStyle = "rgba(100,116,139,0.05)";
+      ctx.strokeStyle = "rgba(100,116,139,0.06)";
       ctx.lineWidth = 0.5 / t.scale;
       for (let gx = -gridRange; gx <= gridRange; gx += gridSize) {
         ctx.beginPath();
@@ -173,13 +192,13 @@ export default function GraphPage() {
         ctx.stroke();
       }
 
-      // Connected nodes for highlight
+      // Connected set
       const connectedTo = new Set<string>();
-      if (selected || hovered) {
-        const active = selected || hovered;
+      const activeNode = selected || hovered;
+      if (activeNode) {
         edges.forEach((e) => {
-          if (e.source === active) connectedTo.add(e.target);
-          if (e.target === active) connectedTo.add(e.source);
+          if (e.source === activeNode) connectedTo.add(e.target);
+          if (e.target === activeNode) connectedTo.add(e.source);
         });
       }
 
@@ -188,7 +207,6 @@ export default function GraphPage() {
         const s = ns.find((n) => n.id === e.source);
         const t2 = ns.find((n) => n.id === e.target);
         if (!s || !t2) return;
-        const activeNode = selected || hovered;
         const isActive = activeNode && (e.source === activeNode || e.target === activeNode);
         const dimmed = activeNode && !isActive;
 
@@ -199,8 +217,8 @@ export default function GraphPage() {
           ? `rgba(124,58,237,${0.3 + e.weight * 0.1})`
           : dimmed
             ? "rgba(100,116,139,0.03)"
-            : `rgba(100,116,139,${0.05 + e.weight * 0.03})`;
-        ctx.lineWidth = isActive ? (1.5 + e.weight * 0.5) / t.scale : 0.5 / t.scale;
+            : `rgba(100,116,139,${0.06 + e.weight * 0.03})`;
+        ctx.lineWidth = (isActive ? 1.5 + e.weight * 0.5 : 0.6) / t.scale;
         ctx.stroke();
       });
 
@@ -217,7 +235,6 @@ export default function GraphPage() {
         const isSelected = n.id === selected;
         const isHovered = n.id === hovered;
         const isConnected = connectedTo.has(n.id);
-        const activeNode = selected || hovered;
         const dimmed = activeNode && !isSelected && !isHovered && !isConnected;
         const matchesSearch = searchLower && (n.fullLabel.toLowerCase().includes(searchLower) || n.tags.some(t3 => t3.toLowerCase().includes(searchLower)));
 
@@ -225,18 +242,17 @@ export default function GraphPage() {
         const radius = isSelected ? 9 : isHovered ? 7 : isConnected ? 6 : matchesSearch ? 7 : baseRadius;
         const color = colors[n.type] || "#64748b";
 
-        // Glow for active/search match
+        // Glow
         if (isSelected || matchesSearch) {
           ctx.beginPath();
-          ctx.arc(n.x, n.y, radius + 8, 0, Math.PI * 2);
-          const grad = ctx.createRadialGradient(n.x, n.y, radius, n.x, n.y, radius + 8);
-          grad.addColorStop(0, isSelected ? "rgba(124,58,237,0.3)" : "rgba(56,189,248,0.3)");
+          ctx.arc(n.x, n.y, radius + 10, 0, Math.PI * 2);
+          const grad = ctx.createRadialGradient(n.x, n.y, radius, n.x, n.y, radius + 10);
+          grad.addColorStop(0, isSelected ? "rgba(124,58,237,0.35)" : "rgba(56,189,248,0.35)");
           grad.addColorStop(1, "transparent");
           ctx.fillStyle = grad;
           ctx.fill();
         }
 
-        // Node circle
         ctx.beginPath();
         ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = dimmed ? `${color}33` : color;
@@ -256,8 +272,18 @@ export default function GraphPage() {
           const fontSize = Math.max(10, 12 / t.scale);
           ctx.font = `500 ${fontSize}px 'Space Grotesk', sans-serif`;
           ctx.textAlign = "center";
-          ctx.fillStyle = isSelected || isHovered ? "rgba(226,232,240,0.95)" : "rgba(226,232,240,0.6)";
-          ctx.fillText(n.label, n.x, n.y - radius - 6 / t.scale);
+          
+          // Background for label
+          const text = n.label;
+          const tw = ctx.measureText(text).width;
+          const lh = fontSize + 4;
+          ctx.fillStyle = "rgba(15,23,42,0.85)";
+          ctx.beginPath();
+          ctx.roundRect(n.x - tw / 2 - 4, n.y - radius - lh - 4, tw + 8, lh, 3);
+          ctx.fill();
+
+          ctx.fillStyle = isSelected || isHovered ? "rgba(226,232,240,0.95)" : "rgba(226,232,240,0.7)";
+          ctx.fillText(text, n.x, n.y - radius - 7);
         }
       });
 
@@ -266,30 +292,26 @@ export default function GraphPage() {
     };
 
     tick();
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener("resize", resize);
-    };
+    return () => cancelAnimationFrame(animId);
   }, [edges, searchQuery]);
 
-  // Screen to world coords
-  const screenToWorld = useCallback((sx: number, sy: number) => {
+  // Screen to world
+  const screenToWorld = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return { wx: 0, wy: 0 };
     const rect = canvas.getBoundingClientRect();
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
+    const W = sizeRef.current.w;
+    const H = sizeRef.current.h;
     const t = transformRef.current;
     return {
-      wx: (sx - rect.left - cx - t.x) / t.scale,
-      wy: (sy - rect.top - cy - t.y) / t.scale,
+      wx: (clientX - rect.left - W / 2 - t.x) / t.scale,
+      wy: (clientY - rect.top - H / 2 - t.y) / t.scale,
     };
   }, []);
 
   const findNodeAt = useCallback((wx: number, wy: number) => {
     const ns = nodesRef.current;
-    const t = transformRef.current;
-    const hitRadius = 12 / t.scale;
+    const hitRadius = 14 / transformRef.current.scale;
     for (const n of ns) {
       const dx = wx - n.x, dy = wy - n.y;
       if (dx * dx + dy * dy < hitRadius * hitRadius) return n;
@@ -297,7 +319,8 @@ export default function GraphPage() {
     return null;
   }, []);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  // Pointer events (works for both mouse & touch)
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const { wx, wy } = screenToWorld(e.clientX, e.clientY);
     const node = findNodeAt(wx, wy);
     if (node) {
@@ -306,9 +329,10 @@ export default function GraphPage() {
     } else {
       setDragging({ type: "pan", startX: e.clientX, startY: e.clientY, origX: transformRef.current.x, origY: transformRef.current.y });
     }
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, [screenToWorld, findNodeAt]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const d = draggingRef.current;
     if (d) {
       if (d.type === "pan") {
@@ -329,11 +353,11 @@ export default function GraphPage() {
       const node = findNodeAt(wx, wy);
       setHoveredNode(node?.id || null);
       const canvas = canvasRef.current;
-      if (canvas) canvas.style.cursor = node ? "grab" : "default";
+      if (canvas) canvas.style.cursor = node ? "pointer" : "grab";
     }
   }, [screenToWorld, findNodeAt]);
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     const d = draggingRef.current;
     if (d?.type === "node" && d.nodeId) {
       const ns = nodesRef.current;
@@ -371,6 +395,35 @@ export default function GraphPage() {
     }));
   }, []);
 
+  // Touch pinch zoom
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastTouchDist.current = Math.sqrt(dx * dx + dy * dy);
+      touchDragging.current = true;
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchDragging.current) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const scale = dist / lastTouchDist.current;
+      lastTouchDist.current = dist;
+      setTransform((prev) => ({
+        ...prev,
+        scale: Math.max(0.2, Math.min(5, prev.scale * scale)),
+      }));
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    touchDragging.current = false;
+  }, []);
+
   const zoom = useCallback((factor: number) => {
     setTransform((prev) => ({ ...prev, scale: Math.max(0.2, Math.min(5, prev.scale * factor)) }));
   }, []);
@@ -398,13 +451,16 @@ export default function GraphPage() {
   return (
     <div className="h-screen flex flex-col pt-14">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-background/80 backdrop-blur-md">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-border/40 bg-background/80 backdrop-blur-md">
         <div className="flex items-center gap-2">
+          <button onClick={() => navigate(-1)} className="p-1 rounded hover:bg-secondary/60 text-muted-foreground/60 hover:text-foreground transition-colors sm:hidden">
+            <ArrowLeft size={16} />
+          </button>
           <h1 className="font-heading text-sm font-semibold">Graph View</h1>
-          <span className="text-[10px] text-muted-foreground/50">{allPosts.length} nodes · {edges.length} edges</span>
+          <span className="text-[10px] text-muted-foreground/50 hidden sm:inline">{allPosts.length} nodes · {edges.length} edges</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="relative">
+          <div className="relative hidden sm:block">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40" />
             <input
               type="text"
@@ -427,30 +483,47 @@ export default function GraphPage() {
         </div>
       </div>
 
-      <div className="flex-1 relative overflow-hidden">
+      {/* Mobile search */}
+      <div className="sm:hidden px-3 py-2 border-b border-border/30">
+        <div className="relative">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40" />
+          <input
+            type="text"
+            placeholder="Search nodes..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 pr-3 py-1.5 text-xs bg-secondary/50 border border-border/40 rounded-lg w-full focus:outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground/40"
+          />
+        </div>
+      </div>
+
+      <div ref={containerRef} className="flex-1 relative overflow-hidden">
         <canvas
           ref={canvasRef}
-          className="w-full h-full"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
+          className="w-full h-full touch-none"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
           onClick={handleClick}
           onDoubleClick={handleDblClick}
           onWheel={handleWheel}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         />
 
         {/* Legend */}
-        <div className="absolute bottom-4 left-4 flex items-center gap-4 px-3 py-2 rounded-xl bg-background/80 backdrop-blur-md border border-border/30 text-[10px] text-muted-foreground/50">
+        <div className="absolute bottom-4 left-4 flex flex-wrap items-center gap-2 sm:gap-4 px-3 py-2 rounded-xl bg-background/80 backdrop-blur-md border border-border/30 text-[10px] text-muted-foreground/50">
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]" /> Note</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#a78bfa]" /> Essay</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#fbbf24]" /> Article</span>
-          <span className="opacity-50">Scroll = Zoom · Drag = Pan · Click = Select · DblClick = Open</span>
+          <span className="opacity-50 hidden sm:inline">Scroll = Zoom · Drag = Pan · Click = Select · DblClick = Open</span>
         </div>
 
         {/* Info Panel */}
         {selectedPost && (
-          <div className="absolute top-4 right-4 w-72 rounded-xl bg-background/90 backdrop-blur-md border border-border/40 p-4 shadow-xl">
+          <div className="absolute top-4 right-4 w-64 sm:w-72 rounded-xl bg-background/90 backdrop-blur-md border border-border/40 p-4 shadow-xl max-h-[60vh] overflow-y-auto">
             <div className="flex items-center gap-2 mb-2">
               <span className={`w-2.5 h-2.5 rounded-full ${selectedPost.type === "note" ? "bg-[#38bdf8]" : selectedPost.type === "essay" ? "bg-[#a78bfa]" : "bg-[#fbbf24]"}`} />
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50">{selectedPost.type} · {selectedPost.category}</span>
