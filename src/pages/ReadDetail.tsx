@@ -1,8 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { getReadBySlug } from "@/data/posts";
+import { getReadBySlug } from "@/content";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ArrowLeft, ExternalLink, Link as LinkIcon, Check } from "lucide-react";
@@ -42,9 +40,11 @@ export default function ReadDetail() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const MdxContent = item.Component;
+
   return (
     <div className="min-h-screen">
-      {item.content && <div className="reading-progress" style={{ width: `${progress}%` }} />}
+      {item.hasBody && <div className="reading-progress" style={{ width: `${progress}%` }} />}
       <Navbar />
 
       <main className="container mx-auto px-6 pt-28 pb-12">
@@ -74,13 +74,10 @@ export default function ReadDetail() {
           </div>
         </header>
 
-        {item.content && (
-          <article className="prose-article">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.content}</ReactMarkdown>
-          </article>
-        )}
+        <article className="prose-article">
+          <MdxContent />
+        </article>
 
-        {/* Tags */}
         {item.tags.length > 0 && (
           <div className="max-w-[68ch] mx-auto mt-8 flex flex-wrap gap-2">
             {item.tags.map((tag) => (
@@ -91,7 +88,6 @@ export default function ReadDetail() {
           </div>
         )}
 
-        {/* Copy link */}
         <div className="max-w-[68ch] mx-auto mt-8 pt-8 border-t border-border">
           <button
             onClick={handleCopyLink}

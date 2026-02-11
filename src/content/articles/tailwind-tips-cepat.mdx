@@ -1,0 +1,49 @@
+---
+title: "5 Tips Tailwind CSS yang Jarang Diketahui"
+slug: tailwind-tips-cepat
+summary: "Trik-trik kecil yang bikin workflow Tailwind lebih efisien."
+type: article
+category: Coding
+tags: [tailwind, css, tips]
+date: "2025-12-28"
+readingTime: 6
+---
+
+## 1. Group Hover
+
+```html
+<div class="group">
+  <h3 class="group-hover:text-blue-500">Title</h3>
+  <p class="group-hover:opacity-100 opacity-0">Description</p>
+</div>
+```
+
+## 2. Arbitrary Values
+
+```html
+<div class="w-[317px] bg-[#1da1f2]">
+  Custom values!
+</div>
+```
+
+## 3. Container Queries
+
+```html
+<div class="@container">
+  <div class="@lg:grid-cols-2">Responsive by container!</div>
+</div>
+```
+
+## 4. @apply untuk Reusable Styles
+
+```css
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg bg-blue-500 text-white;
+  }
+}
+```
+
+## 5. Prettier Plugin
+
+Install `prettier-plugin-tailwindcss` untuk auto-sort class names. Game changer!

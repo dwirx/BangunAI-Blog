@@ -22,7 +22,7 @@ export interface ReadItem {
   source: string;
   url: string;
   tags: string[];
-  content?: string;
+  hasBody?: boolean;
 }
 
 export const categories: Category[] = ["Tech", "Refleksi", "Produktivitas", "Linux", "Coding", "Life"];

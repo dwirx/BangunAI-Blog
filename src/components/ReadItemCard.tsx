@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { ReadItem } from "@/data/posts";
+import { ReadItem } from "@/data/types";
 import { ExternalLink } from "lucide-react";
 
 export default function ReadItemCard({ item }: { item: ReadItem }) {
-  const hasContent = !!item.content;
+  const hasContent = !!item.hasBody;
 
   const CardWrapper = ({ children }: { children: React.ReactNode }) => {
     if (hasContent) {

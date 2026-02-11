@@ -1,0 +1,57 @@
+---
+title: "TypeScript Generics: Panduan Praktis"
+slug: typescript-generics-guide
+summary: "Dari dasar sampai pattern lanjutan, dijelaskan dengan contoh nyata."
+type: article
+category: Coding
+tags: [typescript, generics, tutorial]
+date: "2025-12-15"
+readingTime: 14
+---
+
+## Apa itu Generics?
+
+Generics memungkinkan kamu membuat fungsi dan tipe yang fleksibel tapi tetap *type-safe*.
+
+## Contoh Dasar
+
+```typescript
+function getFirst<T>(arr: T[]): T {
+  return arr[0];
+}
+
+const num = getFirst([1, 2, 3]); // type: number
+const str = getFirst(["a", "b"]); // type: string
+```
+
+## Generic Constraints
+
+```typescript
+interface HasLength {
+  length: number;
+}
+
+function logLength<T extends HasLength>(item: T): void {
+  console.log(item.length);
+}
+
+logLength("hello"); // OK
+logLength(123);     // Error!
+```
+
+## Pattern: Generic React Component
+
+```typescript
+interface ListProps<T> {
+  items: T[];
+  renderItem: (item: T) => React.ReactNode;
+}
+
+function List<T>({ items, renderItem }: ListProps<T>) {
+  return <ul>{items.map(renderItem)}</ul>;
+}
+```
+
+## Kesimpulan
+
+Generics adalah fitur TypeScript yang paling powerful. Mulai dari sederhana.

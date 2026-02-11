@@ -11,7 +11,7 @@ interface SearchResult {
   url: string;
   postType?: "note" | "essay" | "article";
   source?: string;
-  hasContent?: boolean;
+  navigateInternal?: boolean;
 }
 
 export default function SearchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -33,6 +33,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
         summary: p.summary,
         url: p.type === "article" ? `/artikel/${p.slug}` : `/writing/${p.slug}`,
         postType: p.type,
+        navigateInternal: true,
       }));
 
     const readResults: SearchResult[] = readItems
@@ -41,9 +42,9 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
         type: "read" as const,
         title: r.title,
         summary: r.snippet,
-        url: r.content ? `/read/${r.slug}` : r.url,
+        url: r.hasBody ? `/read/${r.slug}` : r.url,
         source: r.source,
-        hasContent: !!r.content,
+        navigateInternal: !!r.hasBody,
       }));
 
     setResults([...postResults, ...readResults].slice(0, 10));
@@ -62,28 +63,26 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") e.preventDefault();
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex((i) => Math.min(i + 1, results.length - 1)); }
     if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex((i) => Math.max(i - 1, 0)); }
     if (e.key === "Enter" && results[selectedIndex]) {
       const r = results[selectedIndex];
-      if (r.type === "read" && !r.hasContent) window.open(r.url, "_blank");
-      else { navigate(r.url); onClose(); }
+      if (r.navigateInternal) { navigate(r.url); onClose(); }
+      else window.open(r.url, "_blank");
     }
     if (e.key === "Escape") onClose();
   };
 
   const handleSelect = (r: SearchResult) => {
-    if (r.type === "read" && !r.hasContent) window.open(r.url, "_blank");
-    else { navigate(r.url); onClose(); }
+    if (r.navigateInternal) { navigate(r.url); onClose(); }
+    else window.open(r.url, "_blank");
   };
 
   if (!open) return null;

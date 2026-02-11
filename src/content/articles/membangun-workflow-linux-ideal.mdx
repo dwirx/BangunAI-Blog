@@ -1,0 +1,45 @@
+---
+title: "Membangun Workflow Linux yang Ideal untuk Developer"
+slug: membangun-workflow-linux-ideal
+summary: "Panduan lengkap menyusun environment development di Linux dari terminal, editor, hingga automation script."
+type: article
+category: Linux
+tags: [linux, workflow, developer]
+date: "2026-02-08"
+readingTime: 12
+featured: true
+---
+
+## Kenapa Linux?
+
+Linux bukan sekadar OS. Bagi developer, Linux adalah kanvas kosong yang bisa kamu bentuk sesuai cara kerja kamu sendiri.
+
+## Terminal sebagai Pusat Segalanya
+
+Terminal adalah jantung dari workflow Linux.
+
+### Konfigurasi Zsh
+
+```bash
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting fzf)
+```
+
+## Editor: Neovim atau VS Code?
+
+Keduanya punya kelebihan. Neovim untuk keyboard-driven, VS Code untuk GUI dan extension ecosystem.
+
+> "The best editor is the one you know well."
+
+## Automation dengan Scripts
+
+```bash
+alias gs="git status"
+alias gc="git commit"
+alias gp="git push"
+alias dc="docker compose"
+```
+
+## Kesimpulan
+
+Workflow ideal itu personal. Eksperimen, iterasi, dan temukan yang cocok.
