@@ -6,6 +6,7 @@ import TypeBadge from "@/components/TypeBadge";
 import { CompactRow } from "@/components/PostCard";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { mdxComponents } from "@/components/MdxComponents";
 import { ArrowLeft, Link as LinkIcon, Check } from "lucide-react";
 
 export default function ArticleDetail() {
@@ -45,7 +46,7 @@ export default function ArticleDetail() {
   };
 
   const backLink = post.type === "article" ? "/artikel" : "/writing";
-  const MdxContent = post.Component;
+  const MdxContent = post.Component as React.ComponentType<{ components?: Record<string, React.ComponentType<any>> }>;
 
   return (
     <div className="min-h-screen">
@@ -72,7 +73,7 @@ export default function ArticleDetail() {
         </header>
 
         <article className="prose-article">
-          <MdxContent />
+          <MdxContent components={mdxComponents} />
         </article>
 
         <div className="max-w-[68ch] mx-auto mt-12 pt-8 border-t border-border">

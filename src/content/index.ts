@@ -6,7 +6,7 @@ import type { ComponentType } from "react";
 import type { Post, ReadItem } from "@/data/types";
 
 interface MdxModule {
-  default: ComponentType;
+  default: ComponentType<{ components?: Record<string, ComponentType<any>> }>;
   frontmatter: Record<string, unknown>;
 }
 

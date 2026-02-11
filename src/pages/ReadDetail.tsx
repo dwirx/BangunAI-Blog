@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { getReadBySlug } from "@/content";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { mdxComponents } from "@/components/MdxComponents";
 import { ArrowLeft, ExternalLink, Link as LinkIcon, Check } from "lucide-react";
 
 export default function ReadDetail() {
@@ -40,7 +41,7 @@ export default function ReadDetail() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const MdxContent = item.Component;
+  const MdxContent = item.Component as React.ComponentType<{ components?: Record<string, React.ComponentType<any>> }>;
 
   return (
     <div className="min-h-screen">
@@ -75,7 +76,7 @@ export default function ReadDetail() {
         </header>
 
         <article className="prose-article">
-          <MdxContent />
+          <MdxContent components={mdxComponents} />
         </article>
 
         {item.tags.length > 0 && (
