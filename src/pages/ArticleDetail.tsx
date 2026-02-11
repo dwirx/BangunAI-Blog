@@ -51,7 +51,7 @@ export default function ArticleDetail() {
     <>
       <div className="reading-progress" style={{ width: `${progress}%` }} />
 
-      <div className="container mx-auto px-6 pt-24 pb-16">
+      <div className="container mx-auto px-6 pt-24 pb-24">
         {/* Back link */}
         <div className="max-w-[68ch] mx-auto mb-10">
           <Link to={backLink} className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground/60 hover:text-foreground transition-colors">
