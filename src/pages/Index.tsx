@@ -1,23 +1,26 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { getFeaturedPosts, getLatestPosts, readItems } from "@/data/posts";
+import { getLatestPosts, readItems } from "@/data/posts";
 import { FeaturedCard, CompactRow } from "@/components/PostCard";
 import ReadItemCard from "@/components/ReadItemCard";
 
 export default function Index() {
-  const featured = getFeaturedPosts();
+  const highlighted = getLatestPosts(3);
   const latest = getLatestPosts(6);
   const nowReading = readItems.slice(0, 3);
 
   return (
     <>
-      {/* Featured */}
+      {/* Terbaru */}
       <section className="container mx-auto px-6 pt-24 mb-20">
         <div className="flex items-center justify-between mb-8">
-          <h2 className="font-heading text-2xl font-bold">Featured</h2>
+          <h2 className="font-heading text-2xl font-bold">Terbaru</h2>
+          <Link to="/writing" className="text-sm text-accent flex items-center gap-1 hover:opacity-80 transition-opacity">
+            Semua <ArrowRight size={14} />
+          </Link>
         </div>
         <div className="grid md:grid-cols-3 gap-5">
-          {featured.map((post) => (
+          {highlighted.map((post) => (
             <FeaturedCard key={post.slug} post={post} />
           ))}
         </div>
