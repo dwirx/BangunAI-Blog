@@ -1,0 +1,84 @@
+{
+  "name": "bangunai-blog-manager",
+  "version": "1.0.0",
+  "description": "Smart content management skill untuk BangunAI Blog (React + Vite + MDX)",
+  "author": "Hades",
+  "created": "2026-02-12",
+  "updated": "2026-02-12",
+  "paths": {
+    "blog_root": "/home/hades/BangunAI-Blog",
+    "content_root": "/home/hades/BangunAI-Blog/src/content",
+    "skill_location": "/home/hades/BangunAI-Blog/skill"
+  },
+  "workflows": [
+    {
+      "name": "daily",
+      "type": "bash",
+      "description": "Create daily note with rollover tasks",
+      "output": "src/content/daily/YYYY-MM-DD.mdx"
+    },
+    {
+      "name": "fetch_last",
+      "type": "bash",
+      "description": "Fetch latest file for style reference",
+      "input": "CATEGORY (writing/articles/read/daily)"
+    },
+    {
+      "name": "write",
+      "type": "bash",
+      "description": "Write new content with frontmatter",
+      "input": "CATEGORY, FILENAME, CONTENT"
+    },
+    {
+      "name": "log",
+      "type": "bash",
+      "description": "Append log to today's daily note",
+      "input": "CONTENT"
+    },
+    {
+      "name": "read",
+      "type": "bash",
+      "description": "Smart read content by keyword",
+      "input": "FILE (keyword)"
+    }
+  ],
+  "categories": {
+    "writing": {
+      "path": "src/content/writing",
+      "use_case": "Personal blog posts, tutorials, notes"
+    },
+    "articles": {
+      "path": "src/content/articles",
+      "use_case": "Long-form articles, deep dives"
+    },
+    "read": {
+      "path": "src/content/read",
+      "use_case": "Reading notes, book summaries"
+    },
+    "daily": {
+      "path": "src/content/daily",
+      "use_case": "Daily notes, logs, tasks"
+    }
+  },
+  "frontmatter_fields": {
+    "required": ["title", "slug", "summary", "type", "category", "tags", "date"],
+    "optional": ["readingTime"],
+    "types": {
+      "title": "string",
+      "slug": "string (kebab-case)",
+      "summary": "string (1-2 sentences)",
+      "type": "note|article|tutorial|guide",
+      "category": "Tech|Life|Design|Business",
+      "tags": "array",
+      "date": "ISO timestamp",
+      "readingTime": "number (minutes)"
+    }
+  },
+  "tested": true,
+  "test_results": {
+    "daily_workflow": "✅ Created 2026-02-12.mdx successfully",
+    "fetch_last_workflow": "✅ Retrieved setup-neovim-2026.mdx reference",
+    "directory_structure": "✅ All content directories exist",
+    "skill_file": "✅ SKILL.md updated with correct paths"
+  }
+}
