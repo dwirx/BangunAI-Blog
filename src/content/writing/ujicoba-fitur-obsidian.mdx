@@ -16,6 +16,7 @@ featured: false
 |-------|--------|------------|
 | Callouts | ✅ | 14 tipe callout tersedia |
 | Mermaid Diagrams | ✅ | Flowchart, sequence, dll |
+| UML Diagrams | ✅ | Class, state, ER, gantt |
 | LaTeX Math | ✅ | Inline & block math |
 | Syntax Highlighting | ✅ | Dengan copy button |
 | YouTube Embeds | ✅ | Auto-convert ke embed |
@@ -117,6 +118,97 @@ pie title Distribusi Tipe Konten
     "Note" : 5
     "Essay" : 3
     "Article" : 4
+```
+
+### Class Diagram (UML)
+
+```mermaid
+classDiagram
+    class Post {
+        +String slug
+        +String title
+        +String summary
+        +String[] tags
+        +Date date
+        +getReadingTime() int
+    }
+    class ReadItem {
+        +String slug
+        +String title
+        +String snippet
+        +String source
+        +String url
+    }
+    class ContentEngine {
+        +getContentBySlug(slug) Post
+        +getReadBySlug(slug) ReadItem
+        +getAllPosts() Post[]
+    }
+    ContentEngine --> Post : manages
+    ContentEngine --> ReadItem : manages
+    Post <|-- Article
+    Post <|-- Note
+    Post <|-- Essay
+```
+
+### State Diagram (UML)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Review : Submit
+    Review --> Published : Approve
+    Review --> Draft : Request Changes
+    Published --> Archived : Archive
+    Archived --> Draft : Restore
+    Published --> [*]
+```
+
+### Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    POST ||--o{ TAG : has
+    POST {
+        string slug PK
+        string title
+        string summary
+        date date
+        int readingTime
+    }
+    TAG {
+        string name PK
+    }
+    POST ||--o{ BACKLINK : references
+    BACKLINK {
+        string from_slug FK
+        string to_slug FK
+    }
+    AUTHOR ||--o{ POST : writes
+    AUTHOR {
+        string name
+        string bio
+    }
+```
+
+### Gantt Chart
+
+```mermaid
+gantt
+    title BangunAI Development Timeline
+    dateFormat  YYYY-MM-DD
+    section Core
+        MDX Engine        :done, 2025-11-01, 30d
+        Routing & Layout  :done, 2025-11-15, 20d
+    section Features
+        Callouts          :done, 2025-12-01, 7d
+        Mermaid Diagrams  :done, 2025-12-08, 7d
+        LaTeX Math        :done, 2025-12-15, 5d
+        WikiLinks         :done, 2025-12-20, 5d
+    section Polish
+        Graph View        :done, 2026-01-01, 14d
+        Dark Mode         :done, 2026-01-15, 7d
+        UML Diagrams      :done, 2026-02-10, 3d
 ```
 
 ---
