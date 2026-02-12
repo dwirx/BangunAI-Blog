@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
+import { formatDateTime } from "@/lib/date";
 import { getContentBySlug } from "@/content";
 import { getRelatedPosts } from "@/data/posts";
 import TypeBadge from "@/components/TypeBadge";
@@ -46,7 +47,7 @@ export default function ArticleDetail() {
 
   const backLink = post.type === "article" ? "/artikel" : "/writing";
   const MdxContent = post.Component as React.ComponentType<{ components?: Record<string, React.ComponentType<any>> }>;
-  const formattedDate = new Date(post.date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  const formattedDate = formatDateTime(post.date);
 
   return (
     <>
