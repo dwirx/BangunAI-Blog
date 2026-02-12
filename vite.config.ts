@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => ({
     {
       enforce: "pre" as const,
       ...mdx({
+        jsxImportSource: "react",
         remarkPlugins: [remarkFrontmatter, remarkMdxFrontmatter, remarkGfm, remarkMath],
         rehypePlugins: [
           rehypeKatex,
