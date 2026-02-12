@@ -6,14 +6,38 @@ import YouTubeEmbed from "./YouTubeEmbed";
 import WikiLink from "./WikiLink";
 import Highlight from "./Highlight";
 
-// Detect mermaid code blocks
-function PreBlock(props: ComponentPropsWithoutRef<"pre">) {
+// Detect mermaid code blocks (handles both raw MDX and rehype-pretty-code processed output)
+function PreBlock(props: ComponentPropsWithoutRef<"pre"> & { "data-language"?: string }) {
+  // Check rehype-pretty-code data-language attribute
+  if (props["data-language"] === "mermaid") {
+    const child = props.children as any;
+    const code = extractTextContent(child);
+    if (code) return <MermaidDiagram chart={code} />;
+  }
+
+  // Check raw className="language-mermaid" on child <code>
   const child = props.children as any;
   if (child?.props?.className === "language-mermaid") {
     const code = typeof child.props.children === "string" ? child.props.children : "";
     return <MermaidDiagram chart={code} />;
   }
+
+  // Check data-language on child <code> element
+  if (child?.props?.["data-language"] === "mermaid") {
+    const code = extractTextContent(child);
+    if (code) return <MermaidDiagram chart={code} />;
+  }
+
   return <CodeBlock {...props} />;
+}
+
+// Recursively extract text content from React elements
+function extractTextContent(node: any): string {
+  if (!node) return "";
+  if (typeof node === "string") return node;
+  if (Array.isArray(node)) return node.map(extractTextContent).join("");
+  if (node?.props?.children) return extractTextContent(node.props.children);
+  return "";
 }
 
 // Custom MDX component overrides — Obsidian-compatible
