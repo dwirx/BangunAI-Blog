@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { formatDateTime } from "@/lib/date";
 import { getReadBySlug } from "@/content";
 import { mdxComponents } from "@/components/MdxComponents";
 import { ArrowLeft, ExternalLink, Link as LinkIcon, Check } from "lucide-react";
@@ -55,7 +56,7 @@ export default function ReadDetail() {
         <header className="max-w-[68ch] mx-auto mb-14">
           <h1 className="font-heading text-3xl md:text-[2.5rem] font-bold leading-[1.15] mb-5">{item.title}</h1>
           <div className="flex items-center gap-3 text-xs text-muted-foreground/50 mb-6">
-            <span>{new Date(item.date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
+            <span>{formatDateTime(item.date)}</span>
             <span>·</span>
             <span>{item.source}</span>
           </div>

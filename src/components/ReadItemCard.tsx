@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ReadItem } from "@/data/types";
 import { ExternalLink } from "lucide-react";
+import { formatDateMedium } from "@/lib/date";
 
 export default function ReadItemCard({ item }: { item: ReadItem }) {
   const hasContent = !!item.hasBody;
@@ -29,7 +30,7 @@ export default function ReadItemCard({ item }: { item: ReadItem }) {
           </h3>
           <p className="text-muted-foreground text-sm line-clamp-2 mb-3">{item.snippet}</p>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span>{new Date(item.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</span>
+            <span>{formatDateMedium(item.date)}</span>
             <span>·</span>
             <span>{item.source}</span>
             {hasContent && (

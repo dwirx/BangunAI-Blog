@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Post } from "@/data/posts";
 import TypeBadge from "./TypeBadge";
+import { formatDateMedium, formatDateShort } from "@/lib/date";
 
 export function FeaturedCard({ post }: { post: Post }) {
   const link = post.type === "article" ? `/artikel/${post.slug}` : `/writing/${post.slug}`;
@@ -15,7 +16,7 @@ export function FeaturedCard({ post }: { post: Post }) {
       </h3>
       <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2 mb-4">{post.summary}</p>
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span>{new Date(post.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</span>
+        <span>{formatDateMedium(post.date)}</span>
         <span>·</span>
         <span>{post.readingTime} min read</span>
       </div>
@@ -39,7 +40,7 @@ export function ListCard({ post }: { post: Post }) {
           <p className="text-muted-foreground text-sm line-clamp-1">{post.summary}</p>
         </div>
         <div className="flex-shrink-0 text-right text-xs text-muted-foreground pt-6">
-          <span>{new Date(post.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</span>
+          <span>{formatDateShort(post.date)}</span>
           <span className="ml-2">{post.readingTime}m</span>
         </div>
       </div>
@@ -58,7 +59,7 @@ export function CompactRow({ post }: { post: Post }) {
         </span>
       </div>
       <span className="text-xs text-muted-foreground flex-shrink-0 ml-4">
-        {new Date(post.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+        {formatDateShort(post.date)}
       </span>
     </Link>
   );
