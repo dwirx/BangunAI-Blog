@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { allPosts } from "@/content";
 import { buildHybridGraph, seededUnit, type GraphEdgeKind } from "@/lib/graph-engine";
-import { ZoomIn, ZoomOut, Search, ArrowLeft, RotateCcw, Focus } from "lucide-react";
+import { ZoomIn, ZoomOut, Search, ArrowLeft, RotateCcw, Focus, SlidersHorizontal } from "lucide-react";
 
 interface Node {
   id: string;
@@ -50,6 +50,7 @@ export default function GraphPage() {
     semantic: true,
     category: true,
   });
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [dragging, setDragging] = useState<{ type: "pan" | "node"; nodeId?: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const [pinVersion, setPinVersion] = useState(0);
@@ -623,6 +624,11 @@ export default function GraphPage() {
     setActiveCategories([]);
     setShowKinds({ direct: true, semantic: true, category: true });
   };
+  const activeFilterCount =
+    (selectedTag !== "all" ? 1 : 0) +
+    (activeTypes.length !== 3 ? 1 : 0) +
+    (activeCategories.length > 0 ? 1 : 0) +
+    ((showKinds.direct && showKinds.semantic && showKinds.category) ? 0 : 1);
 
   const ControlBtn = ({ onClick, title, children, active }: { onClick: () => void; title: string; children: React.ReactNode; active?: boolean }) => (
     <button
@@ -650,6 +656,23 @@ export default function GraphPage() {
           <span className="text-[10px] text-muted-foreground/50 hidden sm:inline">
             {visibleNodeIds.size} / {allPosts.length} nodes · {visibleEdges.length} / {edges.length} edges
           </span>
+          <button
+            onClick={() => setSettingsOpen((v) => !v)}
+            className={`ml-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] transition-colors ${
+              settingsOpen
+                ? "border-primary/40 bg-primary/15 text-primary"
+                : "border-border/40 text-muted-foreground/70 hover:text-foreground"
+            }`}
+            title="Show/Hide filters"
+          >
+            <SlidersHorizontal size={12} />
+            {settingsOpen ? "Hide Settings" : "Show Settings"}
+            {activeFilterCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[9px] leading-none">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="relative hidden sm:block">
@@ -671,71 +694,89 @@ export default function GraphPage() {
       </div>
 
       {/* Filters */}
-      <div className="px-3 sm:px-4 py-2 border-b border-border/30 bg-background/70 backdrop-blur-sm space-y-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {(["note", "essay", "article"] as const).map((type) => (
-            <button
-              key={type}
-              onClick={() => toggleType(type)}
-              className={`px-2.5 py-1 rounded-md text-[10px] border transition-colors ${
-                activeTypes.includes(type)
-                  ? "border-primary/40 bg-primary/15 text-primary"
-                  : "border-border/40 text-muted-foreground/60 hover:text-foreground"
-              }`}
-            >
-              {type}
-            </button>
-          ))}
-          {(["direct", "semantic", "category"] as GraphEdgeKind[]).map((kind) => (
-            <button
-              key={kind}
-              onClick={() => toggleKind(kind)}
-              className={`px-2.5 py-1 rounded-md text-[10px] border transition-colors ${
-                showKinds[kind]
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                  : "border-border/40 text-muted-foreground/60 hover:text-foreground"
-              }`}
-            >
-              {kind}
-            </button>
-          ))}
-          <button
-            onClick={resetFilters}
-            className="px-2.5 py-1 rounded-md text-[10px] border border-border/40 text-muted-foreground/70 hover:text-foreground"
-          >
-            reset
-          </button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={selectedTag}
-            onChange={(e) => setSelectedTag(e.target.value)}
-            className="px-2 py-1 text-[10px] bg-secondary/50 border border-border/40 rounded-md text-foreground"
-          >
-            <option value="all">All tags</option>
-            {allTags.map((tag) => (
-              <option key={tag} value={tag}>
-                {tag}
-              </option>
-            ))}
-          </select>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {allCategories.map((category) => (
-              <button
-                key={category}
-                onClick={() => toggleCategory(category)}
-                className={`px-2 py-1 rounded-md text-[10px] border transition-colors ${
-                  activeCategories.includes(category)
-                    ? "border-sky-500/40 bg-sky-500/10 text-sky-300"
-                    : "border-border/40 text-muted-foreground/60 hover:text-foreground"
-                }`}
+      {settingsOpen && (
+        <div className="px-3 sm:px-4 py-2.5 border-b border-border/30 bg-background/80 backdrop-blur-sm space-y-2">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2.5">
+            <div className="rounded-lg border border-border/30 bg-secondary/20 p-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/50 mb-1.5">Type</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(["note", "essay", "article"] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => toggleType(type)}
+                    className={`px-2.5 py-1 rounded-md text-[10px] border transition-colors ${
+                      activeTypes.includes(type)
+                        ? "border-primary/40 bg-primary/15 text-primary"
+                        : "border-border/40 text-muted-foreground/60 hover:text-foreground"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/30 bg-secondary/20 p-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/50 mb-1.5">Connection</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(["direct", "semantic", "category"] as GraphEdgeKind[]).map((kind) => (
+                  <button
+                    key={kind}
+                    onClick={() => toggleKind(kind)}
+                    className={`px-2.5 py-1 rounded-md text-[10px] border transition-colors ${
+                      showKinds[kind]
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                        : "border-border/40 text-muted-foreground/60 hover:text-foreground"
+                    }`}
+                  >
+                    {kind}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/30 bg-secondary/20 p-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/50 mb-1.5">Tag</p>
+              <select
+                value={selectedTag}
+                onChange={(e) => setSelectedTag(e.target.value)}
+                className="w-full px-2 py-1.5 text-[10px] bg-background/70 border border-border/40 rounded-md text-foreground"
               >
-                {category}
+                <option value="all">All tags</option>
+                {allTags.map((tag) => (
+                  <option key={tag} value={tag}>
+                    {tag}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="rounded-lg border border-border/30 bg-secondary/20 p-2">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/50">Category</p>
+              <button
+                onClick={resetFilters}
+                className="px-2.5 py-1 rounded-md text-[10px] border border-border/40 text-muted-foreground/70 hover:text-foreground"
+              >
+                Reset
               </button>
-            ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {allCategories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => toggleCategory(category)}
+                  className={`px-2 py-1 rounded-md text-[10px] border transition-colors ${
+                    activeCategories.includes(category)
+                      ? "border-sky-500/40 bg-sky-500/10 text-sky-300"
+                      : "border-border/40 text-muted-foreground/60 hover:text-foreground"
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Mobile search */}
       <div className="sm:hidden px-3 py-2 border-b border-border/30">
