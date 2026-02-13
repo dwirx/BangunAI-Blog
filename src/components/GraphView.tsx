@@ -1,5 +1,6 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from "react";
 import { allPosts } from "@/content";
+import { buildHybridGraph, seededUnit, type GraphEdgeKind } from "@/lib/graph-engine";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Maximize2, ZoomIn, ZoomOut, RotateCcw, Focus } from "lucide-react";
 
@@ -12,11 +13,14 @@ interface Node {
   vy: number;
   type: string;
   slug: string;
+  pinned: boolean;
 }
 
 interface Edge {
   source: string;
   target: string;
+  weight: number;
+  kind: GraphEdgeKind;
 }
 
 interface Transform {
@@ -34,45 +38,36 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
   const transformRef = useRef<Transform>({ x: 0, y: 0, scale: 1 });
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0 });
+  const pointerStart = useRef({ x: 0, y: 0 });
   const dragNode = useRef<Node | null>(null);
   const dragMoved = useRef(false);
+  const dragWasPinned = useRef(false);
   const sizeRef = useRef({ w: 500, h: 300 });
   const [zoomLevel, setZoomLevel] = useState(100);
 
   const lastTouchDist = useRef(0);
   const lastTouchCenter = useRef({ x: 0, y: 0 });
 
-  const { nodes, edges } = useMemo(() => {
+  const { nodes, edges, neighbors } = useMemo(() => {
+    const graph = buildHybridGraph(allPosts);
     const nodeMap = new Map<string, Node>();
-    const edgeList: Edge[] = [];
-
-    allPosts.forEach((p, i) => {
-      const angle = (i / allPosts.length) * Math.PI * 2;
-      const radius = 120 + Math.random() * 80;
-      nodeMap.set(p.slug, {
-        id: p.slug,
-        label: p.title.length > 22 ? p.title.slice(0, 22) + "…" : p.title,
+    graph.nodes.forEach((node, i) => {
+      const angle = (i / graph.nodes.length) * Math.PI * 2 + seededUnit(`${node.id}:angle`) * 0.8;
+      const radius = 120 + seededUnit(`${node.id}:radius`) * 90;
+      nodeMap.set(node.slug, {
+        id: node.slug,
+        label: node.title.length > 22 ? node.title.slice(0, 22) + "…" : node.title,
         x: 250 + Math.cos(angle) * radius,
-        y: 200 + Math.sin(angle) * radius,
+        y: 180 + Math.sin(angle) * radius,
         vx: 0,
         vy: 0,
-        type: p.type,
-        slug: p.slug,
+        type: node.type,
+        slug: node.slug,
+        pinned: false,
       });
     });
 
-    for (let i = 0; i < allPosts.length; i++) {
-      for (let j = i + 1; j < allPosts.length; j++) {
-        const a = allPosts[i];
-        const b = allPosts[j];
-        const sharedTags = a.tags.filter((t) => b.tags.includes(t));
-        if (sharedTags.length > 0 || a.category === b.category) {
-          edgeList.push({ source: a.slug, target: b.slug });
-        }
-      }
-    }
-
-    return { nodes: Array.from(nodeMap.values()), edges: edgeList };
+    return { nodes: Array.from(nodeMap.values()), edges: graph.edges, neighbors: graph.neighbors };
   }, []);
 
   const nodesRef = useRef(nodes);
@@ -142,6 +137,7 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
       const W = sizeRef.current.w;
       const H = sizeRef.current.h;
       const hovered = hoveredRef.current;
+      const nodeById = new Map(ns.map((n) => [n.id, n]));
 
       // Physics
       for (let i = 0; i < ns.length; i++) {
@@ -158,25 +154,41 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
       }
 
       edges.forEach((e) => {
-        const s = ns.find((n) => n.id === e.source);
-        const t2 = ns.find((n) => n.id === e.target);
+        const s = nodeById.get(e.source);
+        const t2 = nodeById.get(e.target);
         if (!s || !t2) return;
         const dx = t2.x - s.x;
         const dy = t2.y - s.y;
         const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
-        const force = (dist - 100) * 0.003;
+        const force = (dist - (140 - e.weight * 6)) * 0.0035;
         if (dragNode.current?.id !== s.id) { s.vx += (dx / dist) * force; s.vy += (dy / dist) * force; }
         if (dragNode.current?.id !== t2.id) { t2.vx -= (dx / dist) * force; t2.vy -= (dy / dist) * force; }
       });
 
       ns.forEach((n) => {
-        if (dragNode.current?.id === n.id) return;
+        if (n.pinned || dragNode.current?.id === n.id) return;
         n.vx += (W / 2 - n.x) * 0.001;
         n.vy += (H / 2 - n.y) * 0.001;
         n.vx *= 0.9;
         n.vy *= 0.9;
+        const speed = Math.hypot(n.vx, n.vy);
+        const maxSpeed = 3.6;
+        if (speed > maxSpeed) {
+          n.vx = (n.vx / speed) * maxSpeed;
+          n.vy = (n.vy / speed) * maxSpeed;
+        }
         n.x += n.vx;
         n.y += n.vy;
+
+        const dxC = n.x - W / 2;
+        const dyC = n.y - H / 2;
+        const radius = Math.hypot(dxC, dyC);
+        const maxRadius = Math.min(W, H) * 0.52;
+        if (radius > maxRadius) {
+          const pull = (radius - maxRadius) * 0.15;
+          n.x -= (dxC / radius) * pull;
+          n.y -= (dyC / radius) * pull;
+        }
       });
 
       // Draw
@@ -202,31 +214,27 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
       const connectedEdges = new Set<string>();
       if (currentSlug || hovered) {
         const activeId = currentSlug || hovered;
-        edges.forEach((e) => {
-          if (e.source === activeId || e.target === activeId) {
-            connectedEdges.add(e.source);
-            connectedEdges.add(e.target);
-          }
-        });
+        if (activeId) neighbors.get(activeId)?.forEach((id) => connectedEdges.add(id));
       }
 
       // Edges
       edges.forEach((e) => {
-        const s = ns.find((n) => n.id === e.source);
-        const t2 = ns.find((n) => n.id === e.target);
+        const s = nodeById.get(e.source);
+        const t2 = nodeById.get(e.target);
         if (!s || !t2) return;
         const isActive = s.id === currentSlug || t2.id === currentSlug;
         const isHoverEdge = s.id === hovered || t2.id === hovered;
+        const kindTint = e.kind === "direct" ? 1 : e.kind === "semantic" ? 0.7 : 0.45;
 
         ctx.beginPath();
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t2.x, t2.y);
         ctx.strokeStyle = isActive
-          ? "rgba(124,58,237,0.6)"
+          ? "rgba(124,58,237,0.56)"
           : isHoverEdge
-            ? "rgba(148,163,184,0.4)"
-            : "rgba(100,116,139,0.1)";
-        ctx.lineWidth = (isActive ? 2.5 : isHoverEdge ? 1.5 : 0.5) / t.scale;
+            ? "rgba(148,163,184,0.35)"
+            : `rgba(100,116,139,${0.06 + e.weight * 0.025 + kindTint * 0.02})`;
+        ctx.lineWidth = (isActive ? 2.1 + e.weight * 0.2 : isHoverEdge ? 1.2 + e.weight * 0.12 : 0.45 + e.weight * 0.06) / t.scale;
         ctx.stroke();
       });
 
@@ -308,7 +316,7 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
 
     tick();
     return () => cancelAnimationFrame(animId);
-  }, [edges, currentSlug, isCollapsed]);
+  }, [edges, neighbors, currentSlug, isCollapsed]);
 
   // Mouse handlers
   const getCanvasPos = useCallback((clientX: number, clientY: number) => {
@@ -322,7 +330,9 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
     const { mx, my } = getCanvasPos(e.clientX, e.clientY);
     const node = findNodeAt(mx, my);
     dragMoved.current = false;
+    pointerStart.current = { x: e.clientX, y: e.clientY };
     if (node) {
+      dragWasPinned.current = node.pinned;
       dragNode.current = node;
     } else {
       isPanning.current = true;
@@ -335,12 +345,18 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
     const { mx, my } = getCanvasPos(e.clientX, e.clientY);
 
     if (dragNode.current) {
-      dragMoved.current = true;
+      if (
+        Math.abs(e.clientX - pointerStart.current.x) > 2 ||
+        Math.abs(e.clientY - pointerStart.current.y) > 2
+      ) {
+        dragMoved.current = true;
+      }
       const { x, y } = screenToCanvas(mx, my);
       dragNode.current.x = x;
       dragNode.current.y = y;
       dragNode.current.vx = 0;
       dragNode.current.vy = 0;
+      if (dragMoved.current) dragNode.current.pinned = true;
       return;
     }
 
@@ -362,6 +378,7 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (dragNode.current && !dragMoved.current) {
+      dragNode.current.pinned = dragWasPinned.current;
       const node = dragNode.current;
       const href = node.type === "article" ? `/artikel/${node.slug}` : `/writing/${node.slug}`;
       navigate(href);
@@ -447,6 +464,9 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
   }, []);
 
   const resetView = useCallback(() => {
+    nodesRef.current.forEach((n) => {
+      n.pinned = false;
+    });
     transformRef.current = { x: 0, y: 0, scale: 1 };
     setZoomLevel(100);
   }, []);

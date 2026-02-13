@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { allPosts } from "@/content";
+import { buildHybridGraph, seededUnit, type GraphEdgeKind } from "@/lib/graph-engine";
 import { ZoomIn, ZoomOut, Search, ArrowLeft, RotateCcw, Focus } from "lucide-react";
 
 interface Node {
@@ -22,17 +23,36 @@ interface Edge {
   source: string;
   target: string;
   weight: number;
+  kind: GraphEdgeKind;
 }
 
 export default function GraphPage() {
+  const allTags = useMemo(
+    () => Array.from(new Set(allPosts.flatMap((p) => p.tags))).sort((a, b) => a.localeCompare(b)),
+    []
+  );
+  const allCategories = useMemo(
+    () => Array.from(new Set(allPosts.map((p) => p.category))).sort((a, b) => a.localeCompare(b)),
+    []
+  );
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState<string>("all");
+  const [activeTypes, setActiveTypes] = useState<string[]>(["note", "essay", "article"]);
+  const [activeCategories, setActiveCategories] = useState<string[]>([]);
+  const [showKinds, setShowKinds] = useState<Record<GraphEdgeKind, boolean>>({
+    direct: true,
+    semantic: true,
+    category: true,
+  });
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [dragging, setDragging] = useState<{ type: "pan" | "node"; nodeId?: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const [pinVersion, setPinVersion] = useState(0);
 
   const transformRef = useRef(transform);
   transformRef.current = transform;
@@ -46,46 +66,66 @@ export default function GraphPage() {
 
   const lastTouchDist = useRef(0);
   const touchDragging = useRef(false);
+  const dragMovedRef = useRef(false);
+  const dragWasPinnedRef = useRef(false);
 
   const { nodes, edges } = useMemo(() => {
-    const nodeList: Node[] = [];
-    const edgeList: Edge[] = [];
-
-    allPosts.forEach((p, i) => {
-      const angle = (i / allPosts.length) * Math.PI * 2;
-      const radius = 200 + Math.random() * 150;
-      nodeList.push({
-        id: p.slug,
-        label: p.title.length > 25 ? p.title.slice(0, 25) + "…" : p.title,
-        fullLabel: p.title,
+    const graph = buildHybridGraph(allPosts);
+    const nodeList: Node[] = graph.nodes.map((node, i) => {
+      const angle = (i / graph.nodes.length) * Math.PI * 2 + seededUnit(`${node.id}:angle`) * 0.8;
+      const radius = 220 + seededUnit(`${node.id}:radius`) * 140;
+      return {
+        id: node.id,
+        label: node.title.length > 25 ? node.title.slice(0, 25) + "…" : node.title,
+        fullLabel: node.title,
         x: Math.cos(angle) * radius,
         y: Math.sin(angle) * radius,
-        vx: 0, vy: 0,
-        type: p.type,
-        slug: p.slug,
-        category: p.category,
-        tags: p.tags,
+        vx: 0,
+        vy: 0,
+        type: node.type,
+        slug: node.slug,
+        category: node.category,
+        tags: node.tags,
         pinned: false,
-      });
+      };
     });
 
-    for (let i = 0; i < allPosts.length; i++) {
-      for (let j = i + 1; j < allPosts.length; j++) {
-        const a = allPosts[i], b = allPosts[j];
-        const sharedTags = a.tags.filter((t) => b.tags.includes(t));
-        const sameCategory = a.category === b.category ? 1 : 0;
-        const weight = sharedTags.length + sameCategory;
-        if (weight > 0) {
-          edgeList.push({ source: a.slug, target: b.slug, weight });
-        }
-      }
-    }
-
-    return { nodes: nodeList, edges: edgeList };
+    return { nodes: nodeList, edges: graph.edges };
   }, []);
 
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
+
+  const visibleNodeIds = useMemo(() => {
+    return new Set(
+      allPosts
+        .filter((p) => activeTypes.includes(p.type))
+        .filter((p) => activeCategories.length === 0 || activeCategories.includes(p.category))
+        .filter((p) => selectedTag === "all" || p.tags.includes(selectedTag))
+        .map((p) => p.slug)
+    );
+  }, [activeTypes, activeCategories, selectedTag]);
+
+  const visibleEdges = useMemo(() => {
+    return edges.filter(
+      (e) => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target) && showKinds[e.kind]
+    );
+  }, [edges, visibleNodeIds, showKinds]);
+
+  const visibleNeighbors = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    visibleNodeIds.forEach((id) => map.set(id, new Set()));
+    visibleEdges.forEach((e) => {
+      map.get(e.source)?.add(e.target);
+      map.get(e.target)?.add(e.source);
+    });
+    return map;
+  }, [visibleNodeIds, visibleEdges]);
+
+  useEffect(() => {
+    if (!selectedNode) return;
+    if (!visibleNodeIds.has(selectedNode)) setSelectedNode(null);
+  }, [selectedNode, visibleNodeIds]);
 
   // HiDPI resize
   useEffect(() => {
@@ -128,25 +168,28 @@ export default function GraphPage() {
       const H = sizeRef.current.h;
       const hovered = hoveredRef.current;
       const selected = selectedRef.current;
+      const visibleIds = visibleNodeIds;
+      const nodeById = new Map(ns.map((n) => [n.id, n]));
+      const visibleNodes = ns.filter((n) => visibleIds.has(n.id));
 
       // Physics
-      for (let i = 0; i < ns.length; i++) {
-        if (ns[i].pinned) continue;
-        for (let j = i + 1; j < ns.length; j++) {
-          const dx = ns[j].x - ns[i].x;
-          const dy = ns[j].y - ns[i].y;
+      for (let i = 0; i < visibleNodes.length; i++) {
+        if (visibleNodes[i].pinned) continue;
+        for (let j = i + 1; j < visibleNodes.length; j++) {
+          const dx = visibleNodes[j].x - visibleNodes[i].x;
+          const dy = visibleNodes[j].y - visibleNodes[i].y;
           const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
           const force = 2000 / (dist * dist);
           const fx = (dx / dist) * force;
           const fy = (dy / dist) * force;
-          if (!ns[i].pinned) { ns[i].vx -= fx; ns[i].vy -= fy; }
-          if (!ns[j].pinned) { ns[j].vx += fx; ns[j].vy += fy; }
+          if (!visibleNodes[i].pinned) { visibleNodes[i].vx -= fx; visibleNodes[i].vy -= fy; }
+          if (!visibleNodes[j].pinned) { visibleNodes[j].vx += fx; visibleNodes[j].vy += fy; }
         }
       }
 
-      edges.forEach((e) => {
-        const s = ns.find((n) => n.id === e.source);
-        const t2 = ns.find((n) => n.id === e.target);
+      visibleEdges.forEach((e) => {
+        const s = nodeById.get(e.source);
+        const t2 = nodeById.get(e.target);
         if (!s || !t2) return;
         const dx = t2.x - s.x;
         const dy = t2.y - s.y;
@@ -157,12 +200,31 @@ export default function GraphPage() {
         if (!t2.pinned) { t2.vx -= (dx / dist) * force; t2.vy -= (dy / dist) * force; }
       });
 
-      ns.forEach((n) => {
+      visibleNodes.forEach((n) => {
         if (n.pinned) return;
+        // Keep the layout centered in world space so nodes don't drift outward forever.
+        n.vx += -n.x * 0.0032;
+        n.vy += -n.y * 0.0032;
+
         n.vx *= 0.88;
         n.vy *= 0.88;
+        const speed = Math.hypot(n.vx, n.vy);
+        const maxSpeed = 4.2;
+        if (speed > maxSpeed) {
+          n.vx = (n.vx / speed) * maxSpeed;
+          n.vy = (n.vy / speed) * maxSpeed;
+        }
         n.x += n.vx;
         n.y += n.vy;
+
+        // Soft radial boundary to keep clusters dense and readable.
+        const radius = Math.hypot(n.x, n.y);
+        const maxRadius = 780;
+        if (radius > maxRadius) {
+          const pull = (radius - maxRadius) * 0.04;
+          n.x -= (n.x / radius) * pull;
+          n.y -= (n.y / radius) * pull;
+        }
       });
 
       // Draw
@@ -187,16 +249,13 @@ export default function GraphPage() {
       const connectedTo = new Set<string>();
       const activeNode = selected || hovered;
       if (activeNode) {
-        edges.forEach((e) => {
-          if (e.source === activeNode) connectedTo.add(e.target);
-          if (e.target === activeNode) connectedTo.add(e.source);
-        });
+        visibleNeighbors.get(activeNode)?.forEach((id) => connectedTo.add(id));
       }
 
       // Edges
-      edges.forEach((e) => {
-        const s = ns.find((n) => n.id === e.source);
-        const t2 = ns.find((n) => n.id === e.target);
+      visibleEdges.forEach((e) => {
+        const s = nodeById.get(e.source);
+        const t2 = nodeById.get(e.target);
         if (!s || !t2) return;
         const isActive = activeNode && (e.source === activeNode || e.target === activeNode);
         const dimmed = activeNode && !isActive;
@@ -204,12 +263,13 @@ export default function GraphPage() {
         ctx.beginPath();
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t2.x, t2.y);
+        const kindTint = e.kind === "direct" ? 1 : e.kind === "semantic" ? 0.7 : 0.45;
         ctx.strokeStyle = isActive
-          ? `rgba(124,58,237,${0.35 + e.weight * 0.1})`
+          ? `rgba(124,58,237,${0.28 + e.weight * 0.07})`
           : dimmed
             ? "rgba(100,116,139,0.03)"
-            : `rgba(100,116,139,${0.08 + e.weight * 0.03})`;
-        ctx.lineWidth = (isActive ? 2 + e.weight * 0.5 : 0.6) / t.scale;
+            : `rgba(100,116,139,${0.05 + e.weight * 0.025 + kindTint * 0.02})`;
+        ctx.lineWidth = (isActive ? 1.8 + e.weight * 0.32 : 0.55 + e.weight * 0.05) / t.scale;
         ctx.stroke();
       });
 
@@ -222,7 +282,8 @@ export default function GraphPage() {
 
       const searchLower = searchQuery.toLowerCase();
 
-      ns.forEach((n) => {
+      const occupiedLabels: Array<{ x: number; y: number; w: number; h: number }> = [];
+      visibleNodes.forEach((n) => {
         const isSelected = n.id === selected;
         const isHovered = n.id === hovered;
         const isConnected = connectedTo.has(n.id);
@@ -276,10 +337,18 @@ export default function GraphPage() {
           const pad = 6;
           const lh = fontSize + 6;
           const ly = n.y - radius - lh - 3;
+          const lx = n.x - tw / 2 - pad;
+          const lw = tw + pad * 2;
+          const overlaps = occupiedLabels.some((box) =>
+            lx < box.x + box.w && lx + lw > box.x && ly < box.y + box.h && ly + lh > box.y
+          );
+          const prioritize = isSelected || isHovered || matchesSearch;
+          if (overlaps && !prioritize) return;
+          occupiedLabels.push({ x: lx, y: ly, w: lw, h: lh });
 
           ctx.fillStyle = "rgba(15,23,42,0.92)";
           ctx.beginPath();
-          ctx.roundRect(n.x - tw / 2 - pad, ly, tw + pad * 2, lh, 5);
+          ctx.roundRect(lx, ly, lw, lh, 5);
           ctx.fill();
           ctx.strokeStyle = "rgba(100,116,139,0.12)";
           ctx.lineWidth = 0.5 / t.scale;
@@ -296,7 +365,7 @@ export default function GraphPage() {
 
     tick();
     return () => cancelAnimationFrame(animId);
-  }, [edges, searchQuery]);
+  }, [visibleEdges, visibleNeighbors, visibleNodeIds, searchQuery]);
 
   // Screen to world
   const screenToWorld = useCallback((clientX: number, clientY: number) => {
@@ -316,17 +385,19 @@ export default function GraphPage() {
     const ns = nodesRef.current;
     const hitRadius = 14 / transformRef.current.scale;
     for (const n of ns) {
+      if (!visibleNodeIds.has(n.id)) continue;
       const dx = wx - n.x, dy = wy - n.y;
       if (dx * dx + dy * dy < hitRadius * hitRadius) return n;
     }
     return null;
-  }, []);
+  }, [visibleNodeIds]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const { wx, wy } = screenToWorld(e.clientX, e.clientY);
     const node = findNodeAt(wx, wy);
+    dragMovedRef.current = false;
     if (node) {
-      node.pinned = true;
+      dragWasPinnedRef.current = node.pinned;
       setDragging({ type: "node", nodeId: node.id, startX: e.clientX, startY: e.clientY, origX: node.x, origY: node.y });
     } else {
       setDragging({ type: "pan", startX: e.clientX, startY: e.clientY, origX: transformRef.current.x, origY: transformRef.current.y });
@@ -338,16 +409,23 @@ export default function GraphPage() {
     const d = draggingRef.current;
     if (d) {
       if (d.type === "pan") {
+        if (Math.abs(e.clientX - d.startX) > 2 || Math.abs(e.clientY - d.startY) > 2) {
+          dragMovedRef.current = true;
+        }
         setTransform((prev) => ({ ...prev, x: d.origX + (e.clientX - d.startX), y: d.origY + (e.clientY - d.startY) }));
       } else if (d.type === "node" && d.nodeId) {
         const ns = nodesRef.current;
         const node = ns.find((n) => n.id === d.nodeId);
         if (node) {
+          if (Math.abs(e.clientX - d.startX) > 2 || Math.abs(e.clientY - d.startY) > 2) {
+            dragMovedRef.current = true;
+          }
           const t = transformRef.current;
           node.x = d.origX + (e.clientX - d.startX) / t.scale;
           node.y = d.origY + (e.clientY - d.startY) / t.scale;
           node.vx = 0;
           node.vy = 0;
+          if (dragMovedRef.current) node.pinned = true;
         }
       }
     } else {
@@ -364,12 +442,19 @@ export default function GraphPage() {
     if (d?.type === "node" && d.nodeId) {
       const ns = nodesRef.current;
       const node = ns.find((n) => n.id === d.nodeId);
-      if (node) node.pinned = false;
+      if (node && !dragMovedRef.current) {
+        node.pinned = dragWasPinnedRef.current;
+      }
+      if (dragMovedRef.current) setPinVersion((v) => v + 1);
     }
     setDragging(null);
   }, []);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
+    if (dragMovedRef.current) {
+      dragMovedRef.current = false;
+      return;
+    }
     const { wx, wy } = screenToWorld(e.clientX, e.clientY);
     const node = findNodeAt(wx, wy);
     if (node) {
@@ -448,6 +533,10 @@ export default function GraphPage() {
   }, []);
 
   const resetView = useCallback(() => {
+    nodesRef.current.forEach((n) => {
+      n.pinned = false;
+    });
+    setPinVersion((v) => v + 1);
     setTransform({ x: 0, y: 0, scale: 1 });
     setSelectedNode(null);
   }, []);
@@ -498,13 +587,34 @@ export default function GraphPage() {
 
   const connectedPosts = useMemo(() => {
     if (!selectedNode) return [];
-    const connected = new Set<string>();
-    edges.forEach((e) => {
-      if (e.source === selectedNode) connected.add(e.target);
-      if (e.target === selectedNode) connected.add(e.source);
-    });
+    const connected = visibleNeighbors.get(selectedNode) ?? new Set<string>();
     return allPosts.filter((p) => connected.has(p.slug));
-  }, [selectedNode, edges]);
+  }, [selectedNode, visibleNeighbors]);
+  const selectedNodePinned = useMemo(() => {
+    if (!selectedNode) return false;
+    return nodesRef.current.find((n) => n.id === selectedNode)?.pinned ?? false;
+  }, [selectedNode, pinVersion]);
+
+  const toggleType = (type: string) => {
+    setActiveTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]));
+  };
+
+  const toggleCategory = (category: string) => {
+    setActiveCategories((prev) =>
+      prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
+    );
+  };
+
+  const toggleKind = (kind: GraphEdgeKind) => {
+    setShowKinds((prev) => ({ ...prev, [kind]: !prev[kind] }));
+  };
+
+  const resetFilters = () => {
+    setSelectedTag("all");
+    setActiveTypes(["note", "essay", "article"]);
+    setActiveCategories([]);
+    setShowKinds({ direct: true, semantic: true, category: true });
+  };
 
   const ControlBtn = ({ onClick, title, children, active }: { onClick: () => void; title: string; children: React.ReactNode; active?: boolean }) => (
     <button
@@ -529,7 +639,9 @@ export default function GraphPage() {
             <ArrowLeft size={16} />
           </button>
           <h1 className="font-heading text-sm font-semibold">Graph View</h1>
-          <span className="text-[10px] text-muted-foreground/50 hidden sm:inline">{allPosts.length} nodes · {edges.length} edges</span>
+          <span className="text-[10px] text-muted-foreground/50 hidden sm:inline">
+            {visibleNodeIds.size} / {allPosts.length} nodes · {visibleEdges.length} / {edges.length} edges
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="relative hidden sm:block">
@@ -547,6 +659,73 @@ export default function GraphPage() {
           <ControlBtn onClick={fitToContent} title="Fit all (F)"><Focus size={15} /></ControlBtn>
           <ControlBtn onClick={resetView} title="Reset (0)"><RotateCcw size={15} /></ControlBtn>
           <span className="text-[10px] text-muted-foreground/40 ml-1 min-w-[32px] text-right">{Math.round(transform.scale * 100)}%</span>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="px-3 sm:px-4 py-2 border-b border-border/30 bg-background/70 backdrop-blur-sm space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {(["note", "essay", "article"] as const).map((type) => (
+            <button
+              key={type}
+              onClick={() => toggleType(type)}
+              className={`px-2.5 py-1 rounded-md text-[10px] border transition-colors ${
+                activeTypes.includes(type)
+                  ? "border-primary/40 bg-primary/15 text-primary"
+                  : "border-border/40 text-muted-foreground/60 hover:text-foreground"
+              }`}
+            >
+              {type}
+            </button>
+          ))}
+          {(["direct", "semantic", "category"] as GraphEdgeKind[]).map((kind) => (
+            <button
+              key={kind}
+              onClick={() => toggleKind(kind)}
+              className={`px-2.5 py-1 rounded-md text-[10px] border transition-colors ${
+                showKinds[kind]
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                  : "border-border/40 text-muted-foreground/60 hover:text-foreground"
+              }`}
+            >
+              {kind}
+            </button>
+          ))}
+          <button
+            onClick={resetFilters}
+            className="px-2.5 py-1 rounded-md text-[10px] border border-border/40 text-muted-foreground/70 hover:text-foreground"
+          >
+            reset
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={selectedTag}
+            onChange={(e) => setSelectedTag(e.target.value)}
+            className="px-2 py-1 text-[10px] bg-secondary/50 border border-border/40 rounded-md text-foreground"
+          >
+            <option value="all">All tags</option>
+            {allTags.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag}
+              </option>
+            ))}
+          </select>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {allCategories.map((category) => (
+              <button
+                key={category}
+                onClick={() => toggleCategory(category)}
+                className={`px-2 py-1 rounded-md text-[10px] border transition-colors ${
+                  activeCategories.includes(category)
+                    ? "border-sky-500/40 bg-sky-500/10 text-sky-300"
+                    : "border-border/40 text-muted-foreground/60 hover:text-foreground"
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -585,7 +764,7 @@ export default function GraphPage() {
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]" /> Note</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#a78bfa]" /> Essay</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#fbbf24]" /> Article</span>
-          <span className="opacity-50 hidden sm:inline">Scroll=Zoom · Drag=Pan · Click=Select · DblClick=Open · +/-/0/F</span>
+          <span className="opacity-50 hidden sm:inline">Scroll=Zoom · Drag=Pan · Click=Select · DblClick=Open · Filter=Type/Tag/Category/Koneksi</span>
         </div>
 
         {/* Info Panel */}
@@ -627,6 +806,20 @@ export default function GraphPage() {
             >
               Buka Artikel →
             </button>
+            {selectedNodePinned && (
+              <button
+                onClick={() => {
+                  const node = nodesRef.current.find((n) => n.id === selectedPost.slug);
+                  if (node) {
+                    node.pinned = false;
+                    setPinVersion((v) => v + 1);
+                  }
+                }}
+                className="mt-2 w-full py-1.5 text-xs font-medium rounded-lg bg-secondary/70 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Lepas Pin Node
+              </button>
+            )}
           </div>
         )}
       </div>

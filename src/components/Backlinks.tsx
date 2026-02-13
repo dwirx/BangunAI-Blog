@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
+import { useMemo } from "react";
 import { allPosts } from "@/content";
+import { buildHybridGraph } from "@/lib/graph-engine";
 import { ArrowUpRight } from "lucide-react";
 
 interface BacklinksProps {
@@ -7,13 +9,21 @@ interface BacklinksProps {
 }
 
 export default function Backlinks({ slug }: BacklinksProps) {
-  // Find posts whose content/tags reference this slug
-  const backlinks = allPosts.filter(
-    (p) =>
-      p.slug !== slug &&
-      (p.tags.some((t) => t.toLowerCase() === slug.toLowerCase()) ||
-        p.summary.toLowerCase().includes(slug.replace(/-/g, " ")))
-  );
+  const backlinks = useMemo(() => {
+    const graph = buildHybridGraph(allPosts);
+    const connected = graph.neighbors.get(slug);
+    if (!connected) return [];
+
+    const edgeWeightByNode = new Map<string, number>();
+    graph.edges.forEach((edge) => {
+      if (edge.source === slug) edgeWeightByNode.set(edge.target, edge.weight);
+      if (edge.target === slug) edgeWeightByNode.set(edge.source, edge.weight);
+    });
+
+    return allPosts
+      .filter((p) => p.slug !== slug && connected.has(p.slug))
+      .sort((a, b) => (edgeWeightByNode.get(b.slug) ?? 0) - (edgeWeightByNode.get(a.slug) ?? 0));
+  }, [slug]);
 
   if (backlinks.length === 0) return null;
 
