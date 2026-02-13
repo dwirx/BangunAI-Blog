@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { allPosts } from "@/content";
 import { buildHybridGraph, seededUnit, type GraphEdgeKind } from "@/lib/graph-engine";
-import { ZoomIn, ZoomOut, Search, ArrowLeft, RotateCcw, Focus, SlidersHorizontal } from "lucide-react";
+import { ZoomIn, ZoomOut, Search, ArrowLeft, RotateCcw, Focus, SlidersHorizontal, ChevronDown } from "lucide-react";
 
 interface Node {
   id: string;
@@ -25,6 +25,20 @@ interface Edge {
   weight: number;
   kind: GraphEdgeKind;
 }
+
+const DEFAULT_GRAPH_SETTINGS = {
+  showLines: true,
+  alwaysShowLines: true,
+  showArrows: false,
+  textFadeThreshold: 1.35,
+  nodeSizeScale: 0.95,
+  linkThicknessScale: 1.6,
+  isAnimating: true,
+  centerForceScale: 1.05,
+  repelForceScale: 1.1,
+  linkForceScale: 0.85,
+  linkDistance: 165,
+} as const;
 
 export default function GraphPage() {
   const allTags = useMemo(
@@ -50,7 +64,20 @@ export default function GraphPage() {
     semantic: true,
     category: true,
   });
+  const [showLines, setShowLines] = useState(DEFAULT_GRAPH_SETTINGS.showLines);
+  const [alwaysShowLines, setAlwaysShowLines] = useState(DEFAULT_GRAPH_SETTINGS.alwaysShowLines);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [displayOpen, setDisplayOpen] = useState(true);
+  const [forcesOpen, setForcesOpen] = useState(true);
+  const [showArrows, setShowArrows] = useState(DEFAULT_GRAPH_SETTINGS.showArrows);
+  const [textFadeThreshold, setTextFadeThreshold] = useState(DEFAULT_GRAPH_SETTINGS.textFadeThreshold);
+  const [nodeSizeScale, setNodeSizeScale] = useState(DEFAULT_GRAPH_SETTINGS.nodeSizeScale);
+  const [linkThicknessScale, setLinkThicknessScale] = useState(DEFAULT_GRAPH_SETTINGS.linkThicknessScale);
+  const [isAnimating, setIsAnimating] = useState(DEFAULT_GRAPH_SETTINGS.isAnimating);
+  const [centerForceScale, setCenterForceScale] = useState(DEFAULT_GRAPH_SETTINGS.centerForceScale);
+  const [repelForceScale, setRepelForceScale] = useState(DEFAULT_GRAPH_SETTINGS.repelForceScale);
+  const [linkForceScale, setLinkForceScale] = useState(DEFAULT_GRAPH_SETTINGS.linkForceScale);
+  const [linkDistance, setLinkDistance] = useState(DEFAULT_GRAPH_SETTINGS.linkDistance);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [dragging, setDragging] = useState<{ type: "pan" | "node"; nodeId?: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const [pinVersion, setPinVersion] = useState(0);
@@ -112,6 +139,7 @@ export default function GraphPage() {
       (e) => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target) && showKinds[e.kind]
     );
   }, [edges, visibleNodeIds, showKinds]);
+  const renderedEdges = useMemo(() => (showLines ? visibleEdges : []), [showLines, visibleEdges]);
 
   const visibleNeighbors = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -181,60 +209,62 @@ export default function GraphPage() {
       const nodeById = new Map(ns.map((n) => [n.id, n]));
       const visibleNodes = ns.filter((n) => visibleIds.has(n.id));
 
-      // Physics
-      for (let i = 0; i < visibleNodes.length; i++) {
-        if (visibleNodes[i].pinned) continue;
-        for (let j = i + 1; j < visibleNodes.length; j++) {
-          const dx = visibleNodes[j].x - visibleNodes[i].x;
-          const dy = visibleNodes[j].y - visibleNodes[i].y;
+      if (isAnimating) {
+        // Physics
+        for (let i = 0; i < visibleNodes.length; i++) {
+          if (visibleNodes[i].pinned) continue;
+          for (let j = i + 1; j < visibleNodes.length; j++) {
+            const dx = visibleNodes[j].x - visibleNodes[i].x;
+            const dy = visibleNodes[j].y - visibleNodes[i].y;
+            const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
+            const force = (2000 * repelForceScale) / (dist * dist);
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            if (!visibleNodes[i].pinned) { visibleNodes[i].vx -= fx; visibleNodes[i].vy -= fy; }
+            if (!visibleNodes[j].pinned) { visibleNodes[j].vx += fx; visibleNodes[j].vy += fy; }
+          }
+        }
+
+        renderedEdges.forEach((e) => {
+          const s = nodeById.get(e.source);
+          const t2 = nodeById.get(e.target);
+          if (!s || !t2) return;
+          const dx = t2.x - s.x;
+          const dy = t2.y - s.y;
           const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
-          const force = 2000 / (dist * dist);
-          const fx = (dx / dist) * force;
-          const fy = (dy / dist) * force;
-          if (!visibleNodes[i].pinned) { visibleNodes[i].vx -= fx; visibleNodes[i].vy -= fy; }
-          if (!visibleNodes[j].pinned) { visibleNodes[j].vx += fx; visibleNodes[j].vy += fy; }
-        }
+          const idealDist = Math.max(30, linkDistance / e.weight);
+          const force = (dist - idealDist) * 0.005 * linkForceScale;
+          if (!s.pinned) { s.vx += (dx / dist) * force; s.vy += (dy / dist) * force; }
+          if (!t2.pinned) { t2.vx -= (dx / dist) * force; t2.vy -= (dy / dist) * force; }
+        });
+
+        visibleNodes.forEach((n) => {
+          if (n.pinned) return;
+          // Keep the layout centered in world space so nodes don't drift outward forever.
+          n.vx += -n.x * 0.0032 * centerForceScale;
+          n.vy += -n.y * 0.0032 * centerForceScale;
+
+          n.vx *= 0.88;
+          n.vy *= 0.88;
+          const speed = Math.hypot(n.vx, n.vy);
+          const maxSpeed = 4.2;
+          if (speed > maxSpeed) {
+            n.vx = (n.vx / speed) * maxSpeed;
+            n.vy = (n.vy / speed) * maxSpeed;
+          }
+          n.x += n.vx;
+          n.y += n.vy;
+
+          // Soft radial boundary to keep clusters dense and readable.
+          const radius = Math.hypot(n.x, n.y);
+          const maxRadius = 780;
+          if (radius > maxRadius) {
+            const pull = (radius - maxRadius) * 0.04;
+            n.x -= (n.x / radius) * pull;
+            n.y -= (n.y / radius) * pull;
+          }
+        });
       }
-
-      visibleEdges.forEach((e) => {
-        const s = nodeById.get(e.source);
-        const t2 = nodeById.get(e.target);
-        if (!s || !t2) return;
-        const dx = t2.x - s.x;
-        const dy = t2.y - s.y;
-        const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
-        const idealDist = 150 / e.weight;
-        const force = (dist - idealDist) * 0.005;
-        if (!s.pinned) { s.vx += (dx / dist) * force; s.vy += (dy / dist) * force; }
-        if (!t2.pinned) { t2.vx -= (dx / dist) * force; t2.vy -= (dy / dist) * force; }
-      });
-
-      visibleNodes.forEach((n) => {
-        if (n.pinned) return;
-        // Keep the layout centered in world space so nodes don't drift outward forever.
-        n.vx += -n.x * 0.0032;
-        n.vy += -n.y * 0.0032;
-
-        n.vx *= 0.88;
-        n.vy *= 0.88;
-        const speed = Math.hypot(n.vx, n.vy);
-        const maxSpeed = 4.2;
-        if (speed > maxSpeed) {
-          n.vx = (n.vx / speed) * maxSpeed;
-          n.vy = (n.vy / speed) * maxSpeed;
-        }
-        n.x += n.vx;
-        n.y += n.vy;
-
-        // Soft radial boundary to keep clusters dense and readable.
-        const radius = Math.hypot(n.x, n.y);
-        const maxRadius = 780;
-        if (radius > maxRadius) {
-          const pull = (radius - maxRadius) * 0.04;
-          n.x -= (n.x / radius) * pull;
-          n.y -= (n.y / radius) * pull;
-        }
-      });
 
       // Draw
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -262,24 +292,48 @@ export default function GraphPage() {
       }
 
       // Edges
-      visibleEdges.forEach((e) => {
+      renderedEdges.forEach((e) => {
         const s = nodeById.get(e.source);
         const t2 = nodeById.get(e.target);
         if (!s || !t2) return;
         const isActive = activeNode && (e.source === activeNode || e.target === activeNode);
         const dimmed = activeNode && !isActive;
+        const thicknessBoost = Math.pow(linkThicknessScale, 1.35);
+        const alphaBoost = Math.min(0.12, (thicknessBoost - 1) * 0.04);
 
         ctx.beginPath();
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t2.x, t2.y);
         const kindTint = e.kind === "direct" ? 1 : e.kind === "semantic" ? 0.7 : 0.45;
         ctx.strokeStyle = isActive
-          ? `rgba(124,58,237,${0.28 + e.weight * 0.07})`
-          : dimmed
+          ? `rgba(124,58,237,${0.28 + e.weight * 0.07 + alphaBoost})`
+          : !alwaysShowLines && dimmed
             ? "rgba(100,116,139,0.03)"
-            : `rgba(100,116,139,${0.05 + e.weight * 0.025 + kindTint * 0.02})`;
-        ctx.lineWidth = (isActive ? 1.8 + e.weight * 0.32 : 0.55 + e.weight * 0.05) / t.scale;
+            : `rgba(100,116,139,${(alwaysShowLines ? 0.14 + e.weight * 0.03 + kindTint * 0.03 : 0.05 + e.weight * 0.025 + kindTint * 0.02) + alphaBoost})`;
+        ctx.lineWidth = (
+          isActive
+            ? 1.8 + e.weight * 0.32
+            : alwaysShowLines
+              ? 0.9 + e.weight * 0.08
+              : 0.55 + e.weight * 0.05
+        ) * thicknessBoost / t.scale;
+        ctx.lineCap = "round";
         ctx.stroke();
+
+        if (showArrows) {
+          const angle = Math.atan2(t2.y - s.y, t2.x - s.x);
+          const arrowLen = (7 + e.weight * 0.3) / t.scale;
+          const nodeR = 6.5 * nodeSizeScale;
+          const endX = t2.x - Math.cos(angle) * nodeR;
+          const endY = t2.y - Math.sin(angle) * nodeR;
+          ctx.beginPath();
+          ctx.moveTo(endX, endY);
+          ctx.lineTo(endX - arrowLen * Math.cos(angle - Math.PI / 6), endY - arrowLen * Math.sin(angle - Math.PI / 6));
+          ctx.lineTo(endX - arrowLen * Math.cos(angle + Math.PI / 6), endY - arrowLen * Math.sin(angle + Math.PI / 6));
+          ctx.closePath();
+          ctx.fillStyle = ctx.strokeStyle;
+          ctx.fill();
+        }
       });
 
       // Nodes
@@ -299,7 +353,7 @@ export default function GraphPage() {
         const dimmed = activeNode && !isSelected && !isHovered && !isConnected;
         const matchesSearch = searchLower && (n.fullLabel.toLowerCase().includes(searchLower) || n.tags.some(t3 => t3.toLowerCase().includes(searchLower)));
 
-        const baseRadius = 5;
+        const baseRadius = 5 * nodeSizeScale;
         const radius = isSelected ? 10 : isHovered ? 8 : isConnected ? 6 : matchesSearch ? 8 : baseRadius;
         const color = colors[n.type] || "#64748b";
 
@@ -335,7 +389,7 @@ export default function GraphPage() {
         }
 
         // Labels
-        const showLabel = isSelected || isHovered || isConnected || matchesSearch || t.scale > 1.2;
+        const showLabel = isSelected || isHovered || isConnected || matchesSearch || t.scale > textFadeThreshold;
         if (showLabel && !dimmed) {
           const fontSize = Math.max(10, 12 / t.scale);
           ctx.font = `600 ${fontSize}px 'Space Grotesk', system-ui, sans-serif`;
@@ -374,7 +428,22 @@ export default function GraphPage() {
 
     tick();
     return () => cancelAnimationFrame(animId);
-  }, [visibleEdges, visibleNeighbors, visibleNodeIds, searchQuery]);
+  }, [
+    renderedEdges,
+    visibleNeighbors,
+    visibleNodeIds,
+    searchQuery,
+    alwaysShowLines,
+    isAnimating,
+    centerForceScale,
+    repelForceScale,
+    linkForceScale,
+    linkDistance,
+    showArrows,
+    nodeSizeScale,
+    linkThicknessScale,
+    textFadeThreshold,
+  ]);
 
   // Screen to world
   const screenToWorld = useCallback((clientX: number, clientY: number) => {
@@ -623,6 +692,17 @@ export default function GraphPage() {
     setActiveTypes(["note", "essay", "article"]);
     setActiveCategories([]);
     setShowKinds({ direct: true, semantic: true, category: true });
+    setShowLines(DEFAULT_GRAPH_SETTINGS.showLines);
+    setAlwaysShowLines(DEFAULT_GRAPH_SETTINGS.alwaysShowLines);
+    setShowArrows(DEFAULT_GRAPH_SETTINGS.showArrows);
+    setTextFadeThreshold(DEFAULT_GRAPH_SETTINGS.textFadeThreshold);
+    setNodeSizeScale(DEFAULT_GRAPH_SETTINGS.nodeSizeScale);
+    setLinkThicknessScale(DEFAULT_GRAPH_SETTINGS.linkThicknessScale);
+    setIsAnimating(DEFAULT_GRAPH_SETTINGS.isAnimating);
+    setCenterForceScale(DEFAULT_GRAPH_SETTINGS.centerForceScale);
+    setRepelForceScale(DEFAULT_GRAPH_SETTINGS.repelForceScale);
+    setLinkForceScale(DEFAULT_GRAPH_SETTINGS.linkForceScale);
+    setLinkDistance(DEFAULT_GRAPH_SETTINGS.linkDistance);
   };
   const activeFilterCount =
     (selectedTag !== "all" ? 1 : 0) +
@@ -642,6 +722,43 @@ export default function GraphPage() {
     >
       {children}
     </button>
+  );
+  const SectionHeader = ({ title, open, onToggle }: { title: string; open: boolean; onToggle: () => void }) => (
+    <button onClick={onToggle} className="w-full flex items-center justify-between text-left mb-2">
+      <span className="text-xs font-medium text-foreground/90">{title}</span>
+      <ChevronDown size={14} className={`text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`} />
+    </button>
+  );
+  const RangeField = ({
+    label,
+    value,
+    min,
+    max,
+    step,
+    onChange,
+  }: {
+    label: string;
+    value: number;
+    min: number;
+    max: number;
+    step: number;
+    onChange: (value: number) => void;
+  }) => (
+    <label className="block space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] text-muted-foreground/80">{label}</span>
+        <span className="text-[10px] text-muted-foreground/50">{value.toFixed(step < 1 ? 2 : 0)}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full h-1.5 accent-primary"
+      />
+    </label>
   );
 
   return (
@@ -732,6 +849,29 @@ export default function GraphPage() {
                   </button>
                 ))}
               </div>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <button
+                  onClick={() => setShowLines((v) => !v)}
+                  className={`px-2.5 py-1 rounded-md text-[10px] border transition-colors ${
+                    showLines
+                      ? "border-primary/40 bg-primary/15 text-primary"
+                      : "border-border/40 text-muted-foreground/60 hover:text-foreground"
+                  }`}
+                >
+                  {showLines ? "Lines: ON" : "Lines: OFF"}
+                </button>
+                <button
+                  onClick={() => setAlwaysShowLines((v) => !v)}
+                  disabled={!showLines}
+                  className={`px-2.5 py-1 rounded-md text-[10px] border transition-colors ${
+                    alwaysShowLines && showLines
+                      ? "border-amber-400/40 bg-amber-400/10 text-amber-200"
+                      : "border-border/40 text-muted-foreground/60 hover:text-foreground disabled:opacity-50 disabled:hover:text-muted-foreground/60"
+                  }`}
+                >
+                  Global Show Lines
+                </button>
+              </div>
             </div>
             <div className="rounded-lg border border-border/30 bg-secondary/20 p-2">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground/50 mb-1.5">Tag</p>
@@ -773,6 +913,47 @@ export default function GraphPage() {
                   {category}
                 </button>
               ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+            <div className="rounded-lg border border-border/30 bg-secondary/20 p-2">
+              <SectionHeader title="Display" open={displayOpen} onToggle={() => setDisplayOpen((v) => !v)} />
+              {displayOpen && (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setShowArrows((v) => !v)}
+                    className={`px-2.5 py-1 rounded-md text-[10px] border transition-colors ${
+                      showArrows
+                        ? "border-primary/40 bg-primary/15 text-primary"
+                        : "border-border/40 text-muted-foreground/60 hover:text-foreground"
+                    }`}
+                  >
+                    Arrows {showArrows ? "ON" : "OFF"}
+                  </button>
+                  <RangeField label="Text fade threshold" value={textFadeThreshold} min={0.6} max={2.2} step={0.1} onChange={setTextFadeThreshold} />
+                  <RangeField label="Node size" value={nodeSizeScale} min={0.7} max={1.8} step={0.05} onChange={setNodeSizeScale} />
+                  <RangeField label="Link thickness" value={linkThicknessScale} min={0.4} max={4} step={0.1} onChange={setLinkThicknessScale} />
+                  <button
+                    onClick={() => setIsAnimating((v) => !v)}
+                    className={`w-full py-1.5 text-xs font-medium rounded-md transition-colors ${
+                      isAnimating ? "bg-primary/20 text-primary hover:bg-primary/30" : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {isAnimating ? "Animate: ON" : "Animate: OFF"}
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="rounded-lg border border-border/30 bg-secondary/20 p-2">
+              <SectionHeader title="Forces" open={forcesOpen} onToggle={() => setForcesOpen((v) => !v)} />
+              {forcesOpen && (
+                <div className="space-y-2">
+                  <RangeField label="Center force" value={centerForceScale} min={0} max={2} step={0.05} onChange={setCenterForceScale} />
+                  <RangeField label="Repel force" value={repelForceScale} min={0.2} max={3} step={0.05} onChange={setRepelForceScale} />
+                  <RangeField label="Link force" value={linkForceScale} min={0.2} max={3} step={0.05} onChange={setLinkForceScale} />
+                  <RangeField label="Link distance" value={linkDistance} min={80} max={260} step={1} onChange={setLinkDistance} />
+                </div>
+              )}
             </div>
           </div>
         </div>
