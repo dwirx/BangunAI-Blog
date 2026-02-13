@@ -127,6 +127,14 @@ export default function GraphPage() {
     if (!visibleNodeIds.has(selectedNode)) setSelectedNode(null);
   }, [selectedNode, visibleNodeIds]);
 
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   // HiDPI resize
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -631,7 +639,7 @@ export default function GraphPage() {
   );
 
   return (
-    <div className="h-screen flex flex-col pt-14">
+    <div className="h-[100svh] flex flex-col pt-14 overflow-hidden">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-border/40 bg-background/80 backdrop-blur-md">
         <div className="flex items-center gap-2">
@@ -743,7 +751,7 @@ export default function GraphPage() {
         </div>
       </div>
 
-      <div ref={containerRef} className="flex-1 relative overflow-hidden">
+      <div ref={containerRef} className="flex-1 min-h-0 relative overflow-hidden">
         <canvas
           ref={canvasRef}
           className="w-full h-full touch-none"
