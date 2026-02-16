@@ -38,16 +38,46 @@ Holmes tidak "tiba-tiba tahu jawabannya" seperti kesan yang sering muncul. Ada *
 ### 🎯 The 7-Step Holmes Reasoning Process
 
 ```mermaid
-graph TD
-    A[1. OBSERVE 👁️<br/>Collect raw sensory data] --> B[2. NOTICE 🔍<br/>Identify anomalies & patterns]
-    B --> C[3. CLASSIFY 📚<br/>Match data with knowledge base]
-    C --> D[4. HYPOTHESIZE 💡<br/>Generate possible explanations]
-    D --> E[5. ELIMINATE ❌<br/>Remove impossibilities]
-    E --> F[6. DEDUCE ✅<br/>Select most probable explanation]
-    F --> G[7. VERIFY 🔬<br/>Test against new evidence]
+graph TB
+    subgraph "Phase 1: Data Collection"
+        A["👁️ STEP 1: OBSERVE<br/>━━━━━━━━━━━━━━━<br/>Collect raw sensory data<br/>Visual • Auditory • Olfactory<br/>Tactile • Gustatory"]
+        B["🔍 STEP 2: NOTICE<br/>━━━━━━━━━━━━━━━<br/>Identify anomalies & patterns<br/>What's missing?<br/>What's unusual?"]
+    end
+    
+    subgraph "Phase 2: Analysis"
+        C["📚 STEP 3: CLASSIFY<br/>━━━━━━━━━━━━━━━<br/>Match with knowledge base<br/>Chemistry • Anatomy<br/>Botany • Criminology"]
+        D["💡 STEP 4: HYPOTHESIZE<br/>━━━━━━━━━━━━━━━<br/>Generate 3-5 explanations<br/>Multiple possibilities<br/>No bias"]
+    end
+    
+    subgraph "Phase 3: Deduction"
+        E["❌ STEP 5: ELIMINATE<br/>━━━━━━━━━━━━━━━<br/>Remove impossibilities<br/>Test each hypothesis<br/>against facts"]
+        F["✅ STEP 6: DEDUCE<br/>━━━━━━━━━━━━━━━<br/>Select most probable<br/>Occam's Razor<br/>Simplest = Best"]
+    end
+    
+    subgraph "Phase 4: Validation"
+        G["🔬 STEP 7: VERIFY<br/>━━━━━━━━━━━━━━━<br/>Test with new evidence<br/>Make predictions<br/>Confirm hypothesis"]
+    end
+    
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
     G --> H{Confirmed?}
-    H -->|Yes| I[🎯 CONCLUSION]
-    H -->|No| D
+    H -->|"✅ Yes"| I["🎯 CASE SOLVED<br/>━━━━━━━━━━━<br/>Conclusion reached<br/>Evidence verified<br/>Justice served"]
+    H -->|"❌ No"| J["🔄 REVISE<br/>━━━━━━━━━━━<br/>New data found<br/>Theory disproven"]
+    J --> D
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style B fill:#e8f5e9,stroke:#388e3c,stroke-width:3px
+    style C fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style D fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+    style E fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style F fill:#e0f2f1,stroke:#00796b,stroke-width:3px
+    style G fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    style I fill:#c8e6c9,stroke:#2e7d32,stroke-width:4px
+    style J fill:#ffccbc,stroke:#d84315,stroke-width:3px
 ```
 
 Mari kita breakdown **setiap tahap** dengan detail. 🧩
@@ -202,6 +232,43 @@ Holmes punya **mental database** pola kriminal:
 **Tujuan:** Mengaktifkan **pengetahuan relevan** dari arsip mental.
 
 Holmes punya **knowledge base super spesifik**. Mari kita breakdown **setiap ilmu** yang ia kuasai.
+
+### 🧬 Holmes' Knowledge Matrix
+
+```mermaid
+mindmap
+  root((🧠 HOLMES<br/>KNOWLEDGE<br/>BASE))
+    🧪 Chemistry
+      Blood Analysis
+      Poison Detection
+      Tobacco Ash 140 types
+      Forensic Tests
+    🩺 Anatomy
+      Time of Death
+      Wound Analysis
+      Callus Reading
+      Medical History
+    🌿 Botany
+      Deadly Plants
+      Belladonna
+      Hemlock
+      Opium
+    🗺️ Geology
+      London Mud Map
+      Soil Analysis
+      Geographic Markers
+      Terrain Reading
+    ⚖️ Criminology
+      Modus Operandi
+      Criminal Psychology
+      British Law
+      Case Archives
+    🎭 Practical Skills
+      Disguise Master
+      Multiple Languages
+      Violin Expert
+      Bartitsu Fighter
+```
 
 ### 🧪 1. Kimia Forensik
 
@@ -907,6 +974,37 @@ Holmes memeriksa kuda (yang akhirnya ditemukan):
 
 **Simpson?** Innocent. Hanya kebetulan ada di area. ✅
 
+### 🔍 Visual Timeline: The Silver Blaze Case
+
+```mermaid
+timeline
+    title Timeline Kasus Silver Blaze
+    section Persiapan
+        2 minggu sebelum : Straker punya utang besar
+                         : Rencanakan betting scam
+        1 minggu sebelum : Beli pisau bedah
+                         : Survey lokasi di moor
+    section Malam Kejadian
+        20:00 : Straker siapkan kari + opium
+        20:30 : Stable boy makan kari (drugged)
+        21:00 : Stable boy tertidur
+        22:00 : Straker bawa Silver Blaze ke moor
+              : Anjing tidak bark (kenal owner)
+        22:30 : Straker coba potong tendon kuda
+              : Kuda tendang (self-defense)
+              : Straker mati seketika
+        23:00 : Kuda lari ke stable tetangga
+    section Investigasi
+        Pagi : Mayat ditemukan
+             : Kuda hilang
+             : Simpson jadi suspect
+        Siang : Holmes tiba di lokasi
+              : Observasi crime scene
+        Sore : Holmes temukan kuda
+             : Periksa luka di paha
+             : Deduksi: Inside job!
+```
+
 <Callout type="important" title="🎯 Holmes' Logic Chain">
 **Step-by-step reasoning:**
 
@@ -1029,6 +1127,59 @@ Watson **cek pemilik topi** (nama dari label H.B. → Henry Baker).
 - ✅ Alkoholik (confirmed)
 - ✅ Tidak punya gas (pakai lilin)
 - ✅ Jarang keluar (depresi)
+
+### 🎩 Deduction Flow: From Hat to Life Story
+
+```mermaid
+graph LR
+    subgraph "Physical Evidence"
+        A[🎩 Hat<br/>Quality + Age]
+        B[💨 Dust<br/>Inside]
+        C[🕯️ Candle<br/>Wax Stains]
+        D[📏 Large<br/>Size]
+        E[✂️ No Recent<br/>Haircut]
+        F[💧 Sweat<br/>Stains]
+        G[🔨 DIY<br/>Repairs]
+    end
+    
+    subgraph "Deductions"
+        A --> H[💰 Was Rich<br/>Now Poor]
+        B --> I[🏠 Rarely<br/>Goes Out]
+        C --> J[🕯️ No Gas<br/>Lighting]
+        D --> K[🧠 Intellectual<br/>Big Brain]
+        E --> L[💔 Wife Doesn't<br/>Care]
+        F --> M[🍺 Possible<br/>Alcoholic]
+        G --> N[📉 Financial<br/>Decline]
+    end
+    
+    subgraph "Life Reconstruction"
+        H --> O[📖 Henry Baker<br/>Former Accountant]
+        I --> O
+        J --> O
+        K --> O
+        L --> O
+        M --> O
+        N --> O
+        O --> P[🎯 Complete<br/>Profile:<br/>Fallen intellectual<br/>with drinking problem<br/>& broken marriage]
+    end
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style C fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style D fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style E fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style F fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style G fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style H fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style I fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style J fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style K fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style L fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style M fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style N fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style O fill:#e8f5e9,stroke:#388e3c,stroke-width:3px
+    style P fill:#c8e6c9,stroke:#2e7d32,stroke-width:4px
+```
 
 <Callout type="success" title="✅ Metode Observasi Holmes">
 **Dari 1 objek sederhana (topi), Holmes rekonstruksi:**
