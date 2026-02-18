@@ -6,7 +6,7 @@ type: essay
 category: Refleksi
 tags: [game-theory, strategi, psikologi, kerjasama, prisoner-dilemma]
 date: "2026-02-19T05:30:00"
-readingTime: 18
+readingTime: 22
 featured: true
 ---
 
@@ -19,6 +19,24 @@ Semua berjalan lancar selama beberapa minggu. Hingga suatu Rabu, kamu pulang dan
 Tapi besoknya? Tumpukan itu makin tinggi. Dan makin tinggi lagi. Sampai hari Minggu tiba, dan kamu dihadapkan pada dilema:
 
 **Apakah kamu mencuci piring itu atau membiarkannya menumpuk?** 🤔
+
+```mermaid
+graph TD
+    A[Minggu Tiba: Piring Kotor Menumpuk] --> B{Keputusanmu?}
+    B -->|Cuci Piring| C[Dapur Bersih]
+    B -->|Jangan Cuci| D[Dapur Makin Kotor]
+    C --> E{Dampak Jangka Panjang?}
+    D --> F{Dampak Jangka Panjang?}
+    E -->|Positif| G[Teman terbiasa kamu yang cuci]
+    E -->|Negatif| H[Kamu jadi 'budak piring']
+    F -->|Positif| I[Teman sadar & mulai cuci]
+    F -->|Negatif| J[Dapur jadi tempat sampah]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#bbf,stroke:#333,stroke-width:2px
+    style H fill:#faa,stroke:#333,stroke-width:2px
+    style J fill:#faa,stroke:#333,stroke-width:2px
+```
 
 - Jika kamu mencuci, apakah kamu sudah menjadi "budak piring" selamanya?
 - Jika kamu tidak mencuci, apakah dapur akan menjadi tempat pembuangan sampah?
@@ -74,6 +92,23 @@ Dua orang asing duduk berhadapan. Mereka harus memilih antara **Split** (Bagi) a
 | **Steal** | **Split** | 100% uang | 0% uang |
 | **Steal** | **Steal** | 0% uang | 0% uang |
 
+### Visualisasi Payoff Matrix (Matriks Hasil) 📊
+
+```mermaid
+graph TB
+    subgraph "Prisoner's Dilemma Payoff Matrix"
+    A["Pemain 1 / Pemain 2"] --> B["Split / Split<br/>💰💰<br/>P1: 3 poin | P2: 3 poin"]
+    A --> C["Split / Steal<br/>💔💰<br/>P1: 0 poin | P2: 5 poin"]
+    A --> D["Steal / Split<br/>💰💔<br/>P1: 5 poin | P2: 0 poin"]
+    A --> E["Steal / Steal<br/>⚔️⚔️<br/>P1: 1 poin | P2: 1 poin"]
+    end
+    
+    style B fill:#9f9,stroke:#333,stroke-width:2px
+    style C fill:#f99,stroke:#333,stroke-width:2px
+    style D fill:#f99,stroke:#333,stroke-width:2px
+    style E fill:#fa9,stroke:#333,stroke-width:2px
+```
+
 <Callout type="warning" title="Strategi Dominan">
 Dalam situasi **one-off** (sekali main tanpa pengulangan), teori permainan menunjukkan bahwa pilihan rasional adalah **selalu Steal**.
 
@@ -110,6 +145,18 @@ Dia mengundang para ahli teori dari berbagai disiplin ilmu dan negara untuk meng
 **Total ronde per game:** 200 putaran
 
 **Tujuan:** Kumpulkan poin sebanyak mungkin di akhir semua pertandingan.
+
+```mermaid
+graph LR
+    A[15 Program] --> B[Round Robin Tournament]
+    B --> C[Setiap Program vs Semua]
+    C --> D[200 Ronde per Game]
+    D --> E[Hitung Total Poin]
+    E --> F{Pemenang?}
+    F --> G[🏆 Tit for Tat]
+    
+    style G fill:#ffd,stroke:#333,stroke-width:3px
+```
 
 ---
 
@@ -159,6 +206,34 @@ Axelrod lalu mengadakan turnamen kedua dengan **62 program** dan satu perubahan 
 3. **Maafkan segera:**
    - Begitu lawan kembali kerja sama, kamu juga kembali kerja sama (tanpa dendam). 🕊️
 
+### Flowchart Tit for Tat 🔄
+
+```mermaid
+flowchart TD
+    Start([Permainan Dimulai]) --> First[Ronde 1: Kerja Sama]
+    First --> Check{Lawan Kerja Sama?}
+    
+    Check -->|Ya| Coop[Kamu: Kerja Sama]
+    Check -->|Tidak| Defect[Kamu: Khianat]
+    
+    Coop --> NextCheck{Ronde Berikutnya:<br/>Lawan Kerja Sama?}
+    Defect --> NextCheck2{Ronde Berikutnya:<br/>Lawan Kerja Sama?}
+    
+    NextCheck -->|Ya| Coop
+    NextCheck -->|Tidak| Defect
+    
+    NextCheck2 -->|Ya| Forgive[Kamu: Maafkan<br/>→ Kerja Sama]
+    NextCheck2 -->|Tidak| Defect
+    
+    Forgive --> NextCheck
+    
+    style Start fill:#9f9,stroke:#333,stroke-width:2px
+    style First fill:#9f9,stroke:#333,stroke-width:2px
+    style Coop fill:#9f9,stroke:#333,stroke-width:2px
+    style Defect fill:#f99,stroke:#333,stroke-width:2px
+    style Forgive fill:#9ff,stroke:#333,stroke-width:2px
+```
+
 **Menariknya:** Tit for Tat **tidak pernah menang** dalam pertandingan satu lawan satu (paling banter seri). Tapi di seluruh turnamen, ia **bekerja sama dengan cukup banyak pemain** sehingga total poinnya **paling tinggi**. 💯
 
 ---
@@ -174,6 +249,27 @@ Axelrod menulis bahwa kesuksesan Tit for Tat terletak pada kombinasi dari **empa
 | **Forgiving** (Pemaaf) | Segera kembali kerja sama jika lawan kerja sama lagi | Mengembalikan harmoni & kerja sama jangka panjang 🤝 |
 | **Clear** (Jelas) | Pola tindakan mudah dipahami lawan | Mendorong lawan untuk bekerja sama jangka panjang karena prediktabilitas 📖 |
 
+```mermaid
+mindmap
+  root((Tit for Tat))
+    Nice
+      Mulai dengan Kerja Sama
+      Tidak Pernah Khianat Duluan
+      Membangun Kepercayaan
+    Retaliatory
+      Balas Pengkhianatan Segera
+      Mencegah Eksploitasi
+      Menegakkan Keadilan
+    Forgiving
+      Maafkan jika Lawan Kooperatif Lagi
+      Tidak Menyimpan Dendam
+      Kembalikan Harmoni
+    Clear
+      Pola Mudah Diprediksi
+      Transparan & Konsisten
+      Mendorong Kooperasi Jangka Panjang
+```
+
 <Callout type="important" title="Generosity: Level Berikutnya">
 Dalam simulasi yang lebih realistis dan kacau, versi **Tit for Tat yang lebih murah hati** (kadang-kadang memaafkan pengkhianatan tanpa membalas) terbukti **lebih efektif lagi**! 💝
 </Callout>
@@ -185,6 +281,26 @@ Dalam simulasi yang lebih realistis dan kacau, versi **Tit for Tat yang lebih mu
 Sebaliknya, **pemain yang "nasty"** (agresif, licik, manipulatif) sering kali **terjebak dalam perang saling khianat** yang berujung pada **kehancuran bersama**.
 
 Mereka berpikir sedang "menang" di awal dengan mengeksploitasi pemain yang baik, tapi dalam jangka panjang, mereka justru **kehilangan lebih banyak** karena reputasi buruk mereka membuat semua orang membalas dengan cara yang sama. 😤
+
+### Perbandingan: Nice vs Nasty Strategy 📊
+
+```mermaid
+graph TD
+    subgraph "Nice Strategy (Tit for Tat)"
+    A1[Mulai: Kerja Sama] --> B1[Lawan Balas Kerja Sama]
+    B1 --> C1[Kamu: Kerja Sama Lagi]
+    C1 --> D1[Poin: 3+3+3... = Tinggi]
+    end
+    
+    subgraph "Nasty Strategy (Always Defect)"
+    A2[Mulai: Khianat] --> B2[Lawan Balas Khianat]
+    B2 --> C2[Kamu: Khianat Lagi]
+    C2 --> D2[Poin: 1+1+1... = Rendah]
+    end
+    
+    style D1 fill:#9f9,stroke:#333,stroke-width:2px
+    style D2 fill:#f99,stroke:#333,stroke-width:2px
+```
 
 <Callout type="danger" title="Nasty Players Destroy Themselves">
 *"Pemain yang sering memulai pengkhianatan lebih mungkin melemahkan diri sendiri dan kalah seiring waktu, bahkan jika awalnya terlihat seperti sedang menang."* — Robert Axelrod
@@ -221,6 +337,31 @@ Strategi Tit for Tat pada dasarnya mencerminkan prinsip **"mata dibalas mata"** 
 Bukan tentang **balas dendam tanpa akhir**, melainkan tentang:
 1. **Keadilan proporsional** (balas sesuai kadar kesalahan)
 2. **Rekonsiliasi** (setelah keadilan ditegakkan, kembali ke kerja sama)
+
+```mermaid
+sequenceDiagram
+    participant A as Kamu
+    participant B as Lawan
+    
+    Note over A,B: Ronde 1-3: Harmoni
+    A->>B: Kerja Sama ✅
+    B->>A: Kerja Sama ✅
+    A->>B: Kerja Sama ✅
+    B->>A: Kerja Sama ✅
+    
+    Note over A,B: Ronde 4: Pengkhianatan!
+    A->>B: Kerja Sama ✅
+    B->>A: Khianat ❌
+    
+    Note over A,B: Ronde 5: Pembalasan Proporsional
+    A->>B: Khianat ❌ (Balas dendam)
+    B->>A: Kerja Sama ✅ (Menyesal)
+    
+    Note over A,B: Ronde 6+: Rekonsiliasi
+    A->>B: Kerja Sama ✅ (Maafkan)
+    B->>A: Kerja Sama ✅
+    Note over A,B: Harmoni Kembali
+```
 
 <Callout type="quote" title="Ethos Tit for Tat">
 *"Berbaik hati, jelas, dan pengertian—tapi jangan pernah menjadi korban."* 💎
@@ -265,6 +406,25 @@ Kembali ke dilema piring kotor di awal.
 **Apa yang harus kamu lakukan?**
 
 Berdasarkan strategi Tit for Tat:
+
+```mermaid
+graph TD
+    A[Minggu: Piring Menumpuk] --> B{Strategi Tit for Tat}
+    B --> C[1. Retaliation: Jangan Cuci Hari Ini]
+    C --> D[2. Clarity: Beritahu Teman Sekamar]
+    D --> E[Jelaskan: 'Aku tidak cuci piring kamu,<br/>tapi jika kamu cuci besok,<br/>kita kembali ke jadwal normal']
+    E --> F{Teman Cuci Besok?}
+    F -->|Ya| G[3. Forgiveness: Kembali Kerja Sama]
+    F -->|Tidak| H[Ulangi Retaliation + Clarity]
+    G --> I[Harmoni Terjaga]
+    H --> J[Evaluasi: Pertimbangkan<br/>Cari Teman Sekamar Baru]
+    
+    style C fill:#f99,stroke:#333,stroke-width:2px
+    style D fill:#9cf,stroke:#333,stroke-width:2px
+    style G fill:#9f9,stroke:#333,stroke-width:2px
+    style I fill:#9f9,stroke:#333,stroke-width:3px
+```
+
 1. **Beritahu teman sekamarmu** bahwa kamu tidak akan mencuci piring mereka hari ini (retaliation yang jelas). 🛡️
 2. **Tapi tawarkan untuk kembali ke jadwal normal** jika mereka mencuci piring mereka besok (forgiveness & clarity). 🤝
 3. **Konsisten dengan aturan ini** di masa depan (predictability). 📖
