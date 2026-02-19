@@ -414,6 +414,29 @@
   max-width: 100%;
 }
 
+.mermaid-container svg {
+  max-width: 100%;
+}
+
+.mermaid-container svg text,
+.mermaid-container svg .messageText,
+.mermaid-container svg .loopText,
+.mermaid-container svg .edgeLabel,
+.mermaid-container svg .noteText {
+  font-family: "Space Grotesk", "Inter", sans-serif !important;
+  letter-spacing: 0.01em;
+}
+
+.dark .mermaid-container {
+  background: linear-gradient(160deg, hsl(236 34% 12% / 0.9), hsl(231 30% 9% / 0.88));
+  border-color: hsl(36 28% 36% / 0.45);
+}
+
+.dark .mermaid-container svg .edgeLabel rect,
+.dark .mermaid-container svg .labelBkg {
+  fill: hsl(231 32% 12%) !important;
+}
+
 /* Theme transition — only on key elements, not * */
 body,
 nav,
