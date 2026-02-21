@@ -50,7 +50,7 @@ export default function Navbar() {
             : "py-4"
         }`}
       >
-        <div className="container mx-auto flex items-center justify-between px-6">
+        <div className="mx-auto w-full max-w-[1080px] flex items-center justify-between px-3 sm:px-5 lg:px-6">
           <Link to="/" className="flex items-center gap-2 font-heading text-base font-semibold tracking-tight text-foreground">
             <img src="/favicon.png" alt="BangunAI" className="w-6 h-6 rounded" />
             BangunAI
@@ -94,7 +94,7 @@ export default function Navbar() {
         </div>
 
         {mobileOpen && (
-          <div className="md:hidden bg-background/95 backdrop-blur-md border-t border-border/50 py-3 px-6 space-y-1">
+          <div className="md:hidden bg-background/95 backdrop-blur-md border-t border-border/50 py-3 px-3 sm:px-5 space-y-1">
             {navLinks.map((link) => (
               <Link
                 key={link.to}

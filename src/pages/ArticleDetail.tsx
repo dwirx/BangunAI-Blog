@@ -36,7 +36,7 @@ export default function ArticleDetail() {
 
   if (!post) {
     return (
-      <div className="container mx-auto px-6 pt-32 text-center">
+      <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-32 text-center">
         <p className="text-muted-foreground">Tulisan tidak ditemukan.</p>
         <Link to="/" className="text-accent mt-4 inline-block">Kembali ke Home</Link>
       </div>
@@ -57,9 +57,9 @@ export default function ArticleDetail() {
     <>
       <div className="reading-progress" style={{ width: `${progress}%` }} />
 
-      <div className="container mx-auto px-6 pt-24 pb-24">
+      <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-24 pb-24 overflow-x-clip">
         {/* Back link */}
-        <div className="max-w-[68ch] mx-auto mb-10">
+        <div className="max-w-[68ch] w-full mx-auto mb-10">
           <Link to={backLink} className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground/60 hover:text-foreground transition-colors">
             <ArrowLeft size={14} />
             Kembali
@@ -67,7 +67,7 @@ export default function ArticleDetail() {
         </div>
 
         {/* Header */}
-        <header className="max-w-[68ch] mx-auto mb-14">
+        <header className="max-w-[68ch] w-full mx-auto mb-14">
           <div className="flex items-center gap-2.5 mb-5">
             <TypeBadge type={post.type} />
             <span className="text-xs text-muted-foreground/60 uppercase tracking-wide">{post.category}</span>
@@ -96,7 +96,7 @@ export default function ArticleDetail() {
 
         {/* Tags */}
         {post.tags && post.tags.length > 0 && (
-          <div className="max-w-[68ch] mx-auto mt-10 flex flex-wrap gap-2">
+          <div className="max-w-[68ch] w-full mx-auto mt-10 flex flex-wrap gap-2">
             {post.tags.map((tag) => (
               <TagLink key={tag} tag={tag} />
             ))}
@@ -104,7 +104,7 @@ export default function ArticleDetail() {
         )}
 
         {/* Actions */}
-        <div className="max-w-[68ch] mx-auto mt-10 pt-8 border-t border-border/40">
+        <div className="max-w-[68ch] w-full mx-auto mt-10 pt-8 border-t border-border/40">
           <button
             onClick={handleCopyLink}
             className="inline-flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground/60 hover:text-foreground rounded-lg hover:bg-secondary/50 transition-all"
@@ -118,13 +118,13 @@ export default function ArticleDetail() {
         <Backlinks slug={slug || ""} />
 
         {/* Graph View */}
-        <div className="max-w-[68ch] mx-auto mt-10">
+        <div className="max-w-[68ch] w-full mx-auto mt-10">
           <GraphView currentSlug={slug} />
         </div>
 
         {/* Related */}
         {related.length > 0 && (
-          <div className="max-w-[68ch] mx-auto mt-14">
+          <div className="max-w-[68ch] w-full mx-auto mt-14">
             <h2 className="text-xs uppercase tracking-widest text-muted-foreground/40 mb-4">Tulisan Terkait</h2>
             <div className="divide-y divide-border/40">
               {related.map((p) => (
