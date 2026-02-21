@@ -95,9 +95,10 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
       const { svg } = await mermaid.render(uniqueId, chart.trim());
       setSvgHtml(svg);
       setError("");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Mermaid render error:", e);
-      setError(String(e?.message || e));
+      const message = e instanceof Error ? e.message : String(e);
+      setError(message);
     } finally {
       setLoading(false);
     }

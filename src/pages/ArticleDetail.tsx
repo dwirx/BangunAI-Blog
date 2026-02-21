@@ -12,6 +12,10 @@ import GraphView from "@/components/GraphView";
 import TableOfContents from "@/components/TableOfContents";
 import { ArrowLeft, Link as LinkIcon, Check, Clock, Calendar } from "lucide-react";
 
+type MdxRendererProps = {
+  components?: Record<string, React.ComponentType<Record<string, unknown>>>;
+};
+
 export default function ArticleDetail() {
   const { slug } = useParams<{ slug: string }>();
   const post = getContentBySlug(slug || "");
@@ -46,7 +50,7 @@ export default function ArticleDetail() {
   };
 
   const backLink = post.type === "article" ? "/artikel" : "/writing";
-  const MdxContent = post.Component as React.ComponentType<{ components?: Record<string, React.ComponentType<any>> }>;
+  const MdxContent = post.Component as React.ComponentType<MdxRendererProps>;
   const formattedDate = formatDateTime(post.date);
 
   return (

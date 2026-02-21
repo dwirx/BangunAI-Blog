@@ -7,6 +7,10 @@ import { ArrowLeft, ExternalLink, Link as LinkIcon, Check } from "lucide-react";
 import TagLink from "@/components/TagLink";
 import TableOfContents from "@/components/TableOfContents";
 
+type MdxRendererProps = {
+  components?: Record<string, React.ComponentType<Record<string, unknown>>>;
+};
+
 export default function ReadDetail() {
   const { slug } = useParams<{ slug: string }>();
   const item = getReadBySlug(slug || "");
@@ -39,7 +43,7 @@ export default function ReadDetail() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const MdxContent = item.Component as React.ComponentType<{ components?: Record<string, React.ComponentType<any>> }>;
+  const MdxContent = item.Component as React.ComponentType<MdxRendererProps>;
 
   return (
     <>

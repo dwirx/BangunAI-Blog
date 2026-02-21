@@ -5,8 +5,12 @@
 import type { ComponentType } from "react";
 import type { Post, ReadItem } from "@/data/types";
 
+type MdxRendererProps = {
+  components?: Record<string, ComponentType<Record<string, unknown>>>;
+};
+
 interface MdxModule {
-  default: ComponentType<{ components?: Record<string, ComponentType<any>> }>;
+  default: ComponentType<MdxRendererProps>;
   frontmatter: Record<string, unknown>;
 }
 

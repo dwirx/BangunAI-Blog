@@ -670,6 +670,8 @@ export default function GraphPage() {
   }, [selectedNode, visibleNeighbors]);
   const selectedNodePinned = useMemo(() => {
     if (!selectedNode) return false;
+    const currentPinVersion = pinVersion;
+    void currentPinVersion;
     return nodesRef.current.find((n) => n.id === selectedNode)?.pinned ?? false;
   }, [selectedNode, pinVersion]);
 
