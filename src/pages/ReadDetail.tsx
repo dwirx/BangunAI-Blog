@@ -7,6 +7,10 @@ import { ArrowLeft, ExternalLink, Link as LinkIcon, Check } from "lucide-react";
 import TagLink from "@/components/TagLink";
 import TableOfContents from "@/components/TableOfContents";
 
+type MdxRendererProps = {
+  components?: Record<string, React.ComponentType<Record<string, unknown>>>;
+};
+
 export default function ReadDetail() {
   const { slug } = useParams<{ slug: string }>();
   const item = getReadBySlug(slug || "");
@@ -26,7 +30,7 @@ export default function ReadDetail() {
 
   if (!item) {
     return (
-      <div className="container mx-auto px-6 pt-32 text-center">
+      <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-32 text-center">
         <p className="text-muted-foreground">Bacaan tidak ditemukan.</p>
         <Link to="/read" className="text-accent mt-4 inline-block">Kembali ke Read</Link>
       </div>
@@ -39,21 +43,21 @@ export default function ReadDetail() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const MdxContent = item.Component as React.ComponentType<{ components?: Record<string, React.ComponentType<any>> }>;
+  const MdxContent = item.Component as React.ComponentType<MdxRendererProps>;
 
   return (
     <>
       {item.hasBody && <div className="reading-progress" style={{ width: `${progress}%` }} />}
 
-      <div className="container mx-auto px-6 pt-24 pb-24">
-        <div className="max-w-[68ch] mx-auto mb-10">
+      <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-24 pb-24 overflow-x-clip">
+        <div className="max-w-[68ch] w-full mx-auto mb-10">
           <Link to="/read" className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground/60 hover:text-foreground transition-colors">
             <ArrowLeft size={14} />
             Kembali ke Read
           </Link>
         </div>
 
-        <header className="max-w-[68ch] mx-auto mb-14">
+        <header className="max-w-[68ch] w-full mx-auto mb-14">
           <h1 className="font-heading text-3xl md:text-[2.5rem] font-bold leading-[1.15] mb-5">{item.title}</h1>
           <div className="flex items-center gap-3 text-xs text-muted-foreground/50 mb-6">
             <span>{formatDateTime(item.date)}</span>
@@ -81,14 +85,14 @@ export default function ReadDetail() {
         </article>
 
         {item.tags.length > 0 && (
-          <div className="max-w-[68ch] mx-auto mt-10 flex flex-wrap gap-2">
+          <div className="max-w-[68ch] w-full mx-auto mt-10 flex flex-wrap gap-2">
             {item.tags.map((tag) => (
               <TagLink key={tag} tag={tag} />
             ))}
           </div>
         )}
 
-        <div className="max-w-[68ch] mx-auto mt-10 pt-8 border-t border-border/40">
+        <div className="max-w-[68ch] w-full mx-auto mt-10 pt-8 border-t border-border/40">
           <button
             onClick={handleCopyLink}
             className="inline-flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground/60 hover:text-foreground rounded-lg hover:bg-secondary/50 transition-all"

@@ -1,7 +1,9 @@
 declare module '*.mdx' {
   import type { ComponentType } from 'react';
   
-  const MDXComponent: ComponentType<{ components?: Record<string, ComponentType<any>> }>;
+  const MDXComponent: ComponentType<{
+    components?: Record<string, ComponentType<Record<string, unknown>>>;
+  }>;
   export default MDXComponent;
   
   // Frontmatter exports
