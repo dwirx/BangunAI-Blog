@@ -8,6 +8,7 @@ const navLinks = [
   { label: "Writing", to: "/writing" },
   { label: "Artikel", to: "/artikel" },
   { label: "Read", to: "/read" },
+  { label: "Daily", to: "/daily" },
   { label: "Now", to: "/now" },
   { label: "Tags", to: "/tags" },
   { label: "Graph", to: "/graph" },

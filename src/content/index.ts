@@ -3,7 +3,7 @@
 // Files are auto-detected — no manual imports needed.
 
 import type { ComponentType } from "react";
-import type { Post, ReadItem } from "@/data/types";
+import type { Post, ReadItem, DailyNote } from "@/data/types";
 
 type MdxRendererProps = {
   components?: Record<string, ComponentType<Record<string, unknown>>>;
@@ -18,6 +18,7 @@ interface MdxModule {
 const writingModules = import.meta.glob<MdxModule>("./writing/*.mdx", { eager: true });
 const articleModules = import.meta.glob<MdxModule>("./articles/*.mdx", { eager: true });
 const readModules = import.meta.glob<MdxModule>("./read/*.mdx", { eager: true });
+const dailyModules = import.meta.glob<MdxModule>("./daily/*.mdx", { eager: true });
 const aboutModule = import.meta.glob<MdxModule>("./about.mdx", { eager: true });
 const nowModule = import.meta.glob<MdxModule>("./now.mdx", { eager: true });
 
@@ -55,6 +56,27 @@ function mdxToReadItem(mod: MdxModule): ReadItem & { Component: ComponentType } 
   };
 }
 
+function slugFromPath(path: string) {
+  return path.split("/").pop()?.replace(/\.mdx$/i, "") || path;
+}
+
+function mdxToDailyNote(path: string, mod: MdxModule): DailyNote & { Component: ComponentType } {
+  const fm = mod.frontmatter;
+  const slug = (fm.slug as string | undefined)?.trim() || slugFromPath(path);
+  const date = (fm.date as string | undefined)?.trim() || slug;
+  const title = (fm.title as string | undefined)?.trim() || `Daily Note: ${date}`;
+  const summary = (fm.summary as string | undefined)?.trim() || `Catatan harian ${date}`;
+
+  return {
+    slug,
+    title,
+    date,
+    summary,
+    tags: (fm.tags as string[]) || ["daily"],
+    Component: mod.default,
+  };
+}
+
 // Build post arrays
 export const writingPosts = Object.values(writingModules).map(mdxToPost);
 export const articlePosts = Object.values(articleModules).map(mdxToPost);
@@ -63,6 +85,9 @@ export const allPosts = [...writingPosts, ...articlePosts].sort(
 );
 
 export const allReadItems = Object.values(readModules).map(mdxToReadItem);
+export const allDailyNotes = Object.entries(dailyModules)
+  .map(([path, mod]) => mdxToDailyNote(path, mod))
+  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 // About page content
 export function getAboutContent() {
@@ -84,4 +109,8 @@ export function getContentBySlug(slug: string) {
 
 export function getReadBySlug(slug: string) {
   return allReadItems.find((r) => r.slug === slug);
+}
+
+export function getDailyBySlug(slug: string) {
+  return allDailyNotes.find((note) => note.slug === slug);
 }

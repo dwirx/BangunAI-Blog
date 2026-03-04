@@ -25,4 +25,12 @@ export interface ReadItem {
   hasBody?: boolean;
 }
 
+export interface DailyNote {
+  slug: string;
+  title: string;
+  date: string;
+  summary: string;
+  tags: string[];
+}
+
 export const categories: Category[] = ["Tech", "Refleksi", "Produktivitas", "Linux", "Coding", "Life"];

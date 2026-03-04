@@ -11,6 +11,8 @@ const Writing = lazy(() => import("./pages/Writing"));
 const Articles = lazy(() => import("./pages/Articles"));
 const Read = lazy(() => import("./pages/Read"));
 const ReadDetail = lazy(() => import("./pages/ReadDetail"));
+const Daily = lazy(() => import("./pages/Daily"));
+const DailyDetail = lazy(() => import("./pages/DailyDetail"));
 const About = lazy(() => import("./pages/About"));
 const ArticleDetail = lazy(() => import("./pages/ArticleDetail"));
 const Tags = lazy(() => import("./pages/Tags"));
@@ -44,6 +46,8 @@ const App = () => (
               <Route path="/artikel/:slug" element={<ArticleDetail />} />
               <Route path="/read" element={<Read />} />
               <Route path="/read/:slug" element={<ReadDetail />} />
+              <Route path="/daily" element={<Daily />} />
+              <Route path="/daily/:slug" element={<DailyDetail />} />
               <Route path="/about" element={<About />} />
               <Route path="/now" element={<Now />} />
               <Route path="/tags" element={<Tags />} />

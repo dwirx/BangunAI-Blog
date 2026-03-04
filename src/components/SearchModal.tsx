@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, FileText, BookOpen, ArrowRight } from "lucide-react";
-import { posts, readItems } from "@/data/posts";
+import { Search, FileText, BookOpen, ArrowRight, NotebookPen } from "lucide-react";
+import { posts, readItems, dailyNotes } from "@/data/posts";
 import TypeBadge from "@/components/TypeBadge";
 
 interface SearchResult {
-  type: "post" | "read";
+  type: "post" | "read" | "daily";
   title: string;
   summary: string;
   url: string;
@@ -36,6 +36,21 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
         navigateInternal: true,
       }));
 
+    const dailyResults: SearchResult[] = dailyNotes
+      .filter(
+        (note) =>
+          note.title.toLowerCase().includes(lower) ||
+          note.summary.toLowerCase().includes(lower) ||
+          note.tags.some((t) => t.includes(lower))
+      )
+      .map((note) => ({
+        type: "daily" as const,
+        title: note.title,
+        summary: note.summary,
+        url: `/daily/${note.slug}`,
+        navigateInternal: true,
+      }));
+
     const readResults: SearchResult[] = readItems
       .filter((r) => r.title.toLowerCase().includes(lower) || r.snippet.toLowerCase().includes(lower) || r.tags.some((t) => t.includes(lower)))
       .map((r) => ({
@@ -47,7 +62,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
         navigateInternal: !!r.hasBody,
       }));
 
-    setResults([...postResults, ...readResults].slice(0, 10));
+    setResults([...postResults, ...dailyResults, ...readResults].slice(0, 10));
     setSelectedIndex(0);
   }, []);
 
@@ -99,7 +114,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Cari tulisan, artikel, atau bacaan..."
+              placeholder="Cari tulisan, daily note, atau bacaan..."
               className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground outline-none text-sm"
             />
             <kbd className="hidden md:inline-flex text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">ESC</kbd>
@@ -116,12 +131,19 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
                   }`}
                 >
                   <div className="mt-0.5 flex-shrink-0">
-                    {r.type === "post" ? <FileText size={16} className="text-muted-foreground" /> : <BookOpen size={16} className="text-accent" />}
+                    {r.type === "post" && <FileText size={16} className="text-muted-foreground" />}
+                    {r.type === "daily" && <NotebookPen size={16} className="text-primary" />}
+                    {r.type === "read" && <BookOpen size={16} className="text-accent" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-sm font-medium truncate">{r.title}</span>
                       {r.postType && <TypeBadge type={r.postType} className="scale-90" />}
+                      {r.type === "daily" && (
+                        <span className="inline-block rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
+                          Daily
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-1">{r.summary}</p>
                   </div>

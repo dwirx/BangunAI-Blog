@@ -1,14 +1,15 @@
 // Re-export types and provide helper functions
 // All content is auto-loaded from src/content/*.mdx via import.meta.glob
 
-export type { Post, PostType, Category, ReadItem } from "./types";
+export type { Post, PostType, Category, ReadItem, DailyNote } from "./types";
 export { categories } from "./types";
 
-import { allPosts, allReadItems } from "@/content";
+import { allPosts, allReadItems, allDailyNotes } from "@/content";
 import type { Post, PostType, Category } from "./types";
 
 export const posts: Post[] = allPosts;
 export const readItems = allReadItems;
+export const dailyNotes = allDailyNotes;
 
 export function getPostsByType(type?: PostType) {
   if (!type) return posts;
@@ -50,4 +51,14 @@ export function getRelatedPosts(slug: string, count: number = 3) {
   return posts
     .filter((p) => p.slug !== slug && (p.category === post.category || p.type === post.type))
     .slice(0, count);
+}
+
+export function getLatestDailyNotes(count: number = 7) {
+  return [...dailyNotes]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, count);
+}
+
+export function getDailyNoteBySlug(slug: string) {
+  return dailyNotes.find((note) => note.slug === slug);
 }
