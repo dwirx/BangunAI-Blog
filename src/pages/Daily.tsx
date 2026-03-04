@@ -1,14 +1,18 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { dailyNotes, posts } from "@/data/posts";
 import { CalendarDays, NotebookPen, Hash, Flame, ArrowUpRight } from "lucide-react";
 import FilterChips from "@/components/FilterChips";
 import {
   buildContributionEntries,
   buildContributionHeatmap,
+  buildContributionHeatmapForYear,
   compressHeatmapByActivity,
+  getContributionYears,
   getContributionRangeDays,
+  type ContributionKind,
   type ContributionRange,
+  type DailyHeatmapCell,
   filterDailyNotes,
   findClosestDailyNote,
   getDailyMonthOptions,
@@ -30,61 +34,157 @@ const heatmapRangeOptions: Array<{ value: ContributionRange; label: string }> = 
   { value: "1y", label: "1 Tahun" },
 ];
 
+type HeatmapViewMode = "rolling" | "year" | "all";
+
+const heatmapViewModeOptions: Array<{ value: HeatmapViewMode; label: string }> = [
+  { value: "rolling", label: "Rentang" },
+  { value: "year", label: "Tahun" },
+  { value: "all", label: "Semua" },
+];
+
+const contributionSourceOptions: Array<{ value: ContributionKind; label: string }> = [
+  { value: "daily", label: "Daily" },
+  { value: "writing", label: "Writing" },
+  { value: "artikel", label: "Artikel" },
+];
+
+function getWeekCount(cells: DailyHeatmapCell[]) {
+  return Math.max(1, Math.max(0, ...cells.map((cell) => cell.weekIndex)) + 1);
+}
+
+function getMonthMarkers(cells: DailyHeatmapCell[]) {
+  const seen = new Set<string>();
+  return cells.flatMap((cell) => {
+    const monthKey = cell.date.slice(0, 7);
+    if (seen.has(monthKey)) return [];
+    seen.add(monthKey);
+    return [
+      {
+        weekIndex: cell.weekIndex,
+        label: new Date(`${monthKey}-01T00:00:00`).toLocaleDateString("id-ID", { month: "short" }),
+        monthKey,
+      },
+    ];
+  });
+}
+
 export default function Daily() {
   const navigate = useNavigate();
   const [monthFilter, setMonthFilter] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [jumpDate, setJumpDate] = useState("");
   const [heatmapRange, setHeatmapRange] = useState<ContributionRange>("6m");
+  const [heatmapViewMode, setHeatmapViewMode] = useState<HeatmapViewMode>("rolling");
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedSources, setSelectedSources] = useState<ContributionKind[]>([
+    "daily",
+    "writing",
+    "artikel",
+  ]);
+  const [expandedYear, setExpandedYear] = useState<number | null>(null);
   const [selectedHeatDate, setSelectedHeatDate] = useState<string | null>(null);
 
   const currentYear = new Date().getFullYear();
   const streak = useMemo(() => getDailyStreakStats(dailyNotes), []);
   const contributionEntries = useMemo(() => buildContributionEntries(dailyNotes, posts), []);
+  const filteredContributionEntries = useMemo(
+    () => contributionEntries.filter((entry) => selectedSources.includes(entry.kind)),
+    [contributionEntries, selectedSources]
+  );
+  const availableYears = useMemo(
+    () => getContributionYears(filteredContributionEntries),
+    [filteredContributionEntries]
+  );
+  useEffect(() => {
+    if (availableYears.length === 0) return;
+    if (!availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[0]);
+    }
+  }, [availableYears, selectedYear]);
+  useEffect(() => {
+    if (expandedYear === null) return;
+    if (!availableYears.includes(expandedYear)) {
+      setExpandedYear(null);
+    }
+  }, [availableYears, expandedYear]);
   const heatmapDays = useMemo(() => getContributionRangeDays(heatmapRange), [heatmapRange]);
-  const heatmap = useMemo(
+  const rollingHeatmap = useMemo(
     () =>
-      buildContributionHeatmap(contributionEntries, {
+      buildContributionHeatmap(filteredContributionEntries, {
         days: heatmapDays,
         alignToWeeks: true,
       }),
-    [contributionEntries, heatmapDays]
+    [filteredContributionEntries, heatmapDays]
   );
   const compactHeatmap = useMemo(
     () =>
-      compressHeatmapByActivity(heatmap, {
+      compressHeatmapByActivity(rollingHeatmap, {
         leadingContextWeeks: 2,
         trailingContextWeeks: 1,
         minWeeks: 10,
       }),
-    [heatmap]
+    [rollingHeatmap]
+  );
+  const yearHeatmap = useMemo(() => {
+    if (availableYears.length === 0) return [];
+    return buildContributionHeatmapForYear(filteredContributionEntries, selectedYear, {
+      alignToWeeks: true,
+    });
+  }, [availableYears.length, filteredContributionEntries, selectedYear]);
+  const allYearHeatmaps = useMemo(
+    () =>
+      availableYears.map((year) => ({
+        year,
+        cells: buildContributionHeatmapForYear(filteredContributionEntries, year, {
+          alignToWeeks: true,
+        }),
+      })),
+    [availableYears, filteredContributionEntries]
   );
   const displayHeatmap = useMemo(
-    () => (heatmapRange === "1y" ? heatmap : compactHeatmap),
-    [heatmapRange, heatmap, compactHeatmap]
+    () =>
+      heatmapViewMode === "rolling"
+        ? heatmapRange === "1y"
+          ? rollingHeatmap
+          : compactHeatmap
+        : yearHeatmap,
+    [compactHeatmap, heatmapRange, heatmapViewMode, rollingHeatmap, yearHeatmap]
   );
-  const weekCount = useMemo(
-    () => Math.max(1, Math.max(0, ...displayHeatmap.map((cell) => cell.weekIndex)) + 1),
-    [displayHeatmap]
+  const isFullWidthHeatmap = heatmapViewMode !== "rolling" || heatmapRange === "1y";
+  const activeSourceLabel = useMemo(
+    () =>
+      contributionSourceOptions
+        .filter((option) => selectedSources.includes(option.value))
+        .map((option) => option.label)
+        .join(" + "),
+    [selectedSources]
   );
-  const monthMarkers = useMemo(() => {
-    const seen = new Set<string>();
-    return displayHeatmap.flatMap((cell) => {
-      const monthKey = cell.date.slice(0, 7);
-      if (seen.has(monthKey)) return [];
-      seen.add(monthKey);
-      return [
-        {
-          weekIndex: cell.weekIndex,
-          label: new Date(`${monthKey}-01T00:00:00`).toLocaleDateString("id-ID", { month: "short" }),
-          monthKey,
-        },
-      ];
-    });
-  }, [displayHeatmap]);
+  const activeDayCount = useMemo(() => {
+    if (heatmapViewMode === "all") {
+      const activeDays = new Set<string>();
+      allYearHeatmaps.forEach((section) => {
+        section.cells.forEach((cell) => {
+          if (cell.count > 0) activeDays.add(cell.date);
+        });
+      });
+      return activeDays.size;
+    }
+    return displayHeatmap.filter((cell) => cell.count > 0).length;
+  }, [allYearHeatmaps, displayHeatmap, heatmapViewMode]);
+  useEffect(() => {
+    if (heatmapViewMode !== "all" && expandedYear !== null) {
+      setExpandedYear(null);
+    }
+  }, [expandedYear, heatmapViewMode]);
   const selectedHeatCell = useMemo(
-    () => displayHeatmap.find((cell) => cell.date === selectedHeatDate) ?? null,
-    [displayHeatmap, selectedHeatDate]
+    () => {
+      const source =
+        heatmapViewMode === "all"
+          ? allYearHeatmaps.flatMap((section) => section.cells)
+          : displayHeatmap;
+      return source.find((cell) => cell.date === selectedHeatDate) ?? null;
+    },
+    [allYearHeatmaps, displayHeatmap, heatmapViewMode, selectedHeatDate]
   );
   const monthOptions = useMemo(() => getDailyMonthOptions(dailyNotes), []);
   const allTags = useMemo(
@@ -115,6 +215,147 @@ export default function Daily() {
     if (jumpTarget.exact) return `Tanggal ${jumpDate} tersedia.`;
     return `Tidak ada catatan pada ${jumpDate}. Terdekat: ${jumpTarget.note.date}.`;
   })();
+
+  const toggleSource = (source: ContributionKind) => {
+    setSelectedSources((current) => {
+      if (current.includes(source)) {
+        if (current.length === 1) return current;
+        return current.filter((item) => item !== source);
+      }
+      return [...current, source];
+    });
+    setSelectedHeatDate(null);
+  };
+
+  const renderHeatmapGrid = (
+    cells: DailyHeatmapCell[],
+    options: {
+      fullWidth?: boolean;
+      minWidthClass?: string;
+      compact?: boolean;
+      showWeekdayLabels?: boolean;
+      showMonthLabels?: boolean;
+      disableHorizontalScroll?: boolean;
+    } = {}
+  ) => {
+    const fullWidth = options.fullWidth ?? false;
+    const compact = options.compact ?? false;
+    const showWeekdayLabels = options.showWeekdayLabels ?? true;
+    const showMonthLabels = options.showMonthLabels ?? true;
+    const disableHorizontalScroll = options.disableHorizontalScroll ?? false;
+    const weekCount = getWeekCount(cells);
+    const monthMarkers = getMonthMarkers(cells);
+
+    return (
+      <div className={cn("pb-1", disableHorizontalScroll ? "overflow-hidden" : "overflow-x-auto")}>
+        <div
+          className={cn(
+            "grid",
+            compact ? "gap-1" : "gap-2",
+            showWeekdayLabels
+              ? fullWidth
+                ? "grid-cols-[16px_minmax(0,1fr)] w-full"
+                : "grid-cols-[16px_auto] w-max"
+              : fullWidth
+                ? "grid-cols-[minmax(0,1fr)] w-full"
+                : "grid-cols-[auto] w-max"
+          )}
+        >
+          {showWeekdayLabels && (
+            <div className={cn("grid grid-rows-7", compact ? "gap-0.5 pt-[12px]" : "gap-1 pt-[18px]")}>
+              {["", "M", "", "W", "", "F", ""].map((label, index) => (
+                <span
+                  key={`${label}-${index}`}
+                  className={cn(
+                    "text-[10px] text-muted-foreground/65",
+                    fullWidth ? "min-h-[12px] flex items-center" : "h-[13px] leading-[13px]"
+                  )}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className={fullWidth ? cn("w-full", options.minWidthClass ?? "min-w-[720px]") : "w-max"}>
+            {showMonthLabels && (
+              <div
+                className={cn("relative", compact ? "mb-1 h-3" : "mb-2 h-4")}
+                style={{
+                  width: fullWidth ? "100%" : `${weekCount * 16}px`,
+                }}
+              >
+                {monthMarkers.map((marker) => (
+                  <span
+                    key={marker.monthKey}
+                    className="absolute top-0 text-[10px] text-muted-foreground/70"
+                    style={{
+                      left: fullWidth
+                        ? `${(marker.weekIndex / Math.max(1, weekCount - 1)) * 100}%`
+                        : `${marker.weekIndex * 16}px`,
+                    }}
+                  >
+                    {marker.label}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div
+              className={cn(
+                "grid grid-rows-7",
+                compact ? "gap-0.5" : "gap-1",
+                fullWidth ? "w-full" : "grid-flow-col auto-cols-[12px] w-max"
+              )}
+              style={
+                fullWidth
+                  ? { gridAutoFlow: "column", gridTemplateColumns: `repeat(${weekCount}, minmax(0, 1fr))` }
+                  : undefined
+              }
+            >
+              {cells.map((cell) => {
+                const intensityClass = {
+                  0: "bg-secondary/45",
+                  1: "bg-primary/25",
+                  2: "bg-primary/45",
+                  3: "bg-accent/55",
+                  4: "bg-highlight/65",
+                }[cell.intensity];
+                const tooltipParts = [
+                  cell.date,
+                  `${cell.count} kontribusi`,
+                  cell.breakdown.daily > 0 ? `Daily ${cell.breakdown.daily}` : "",
+                  cell.breakdown.writing > 0 ? `Writing ${cell.breakdown.writing}` : "",
+                  cell.breakdown.artikel > 0 ? `Artikel ${cell.breakdown.artikel}` : "",
+                ].filter(Boolean);
+
+                return (
+                  <button
+                    type="button"
+                    key={cell.date}
+                    title={tooltipParts.join(" • ")}
+                    aria-label={`Aktivitas ${cell.date}`}
+                    onClick={() =>
+                      setSelectedHeatDate((current) => (current === cell.date ? null : cell.date))
+                    }
+                    className={cn(
+                      compact
+                        ? "aspect-square w-full rounded-[2px] border border-border/20 transition-colors"
+                        : fullWidth
+                          ? "aspect-square w-full rounded-[3px] border border-border/20 transition-transform hover:scale-105"
+                          : "h-3 w-3 rounded-[3px] border border-border/20 transition-transform hover:scale-110",
+                      intensityClass,
+                      cell.isToday && "ring-1 ring-primary/90",
+                      selectedHeatDate === cell.date && "ring-2 ring-accent/90"
+                    )}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="container mx-auto px-6 pt-24 pb-12">
@@ -167,26 +408,26 @@ export default function Daily() {
       </div>
 
       <section className="mb-10 glass-card">
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="font-heading text-xl font-semibold">Contribution Heatmap</h2>
             <p className="text-xs text-muted-foreground/65 mt-1">
-              Sumber: Daily + Writing + Artikel
+              Sumber aktif: {activeSourceLabel}
             </p>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <span className="text-xs text-muted-foreground/65">
-              Hari aktif: {heatmap.filter((cell) => cell.count > 0).length}
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+            <span className="text-xs text-muted-foreground/65 sm:text-right">
+              Hari aktif: {activeDayCount}
             </span>
-            <div className="inline-flex rounded-lg border border-border/45 bg-secondary/30 p-0.5">
-              {heatmapRangeOptions.map((option) => (
+            <div className="grid w-full grid-cols-3 rounded-lg border border-border/45 bg-secondary/30 p-0.5 sm:inline-flex sm:w-auto sm:grid-cols-none">
+              {heatmapViewModeOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setHeatmapRange(option.value)}
+                  onClick={() => setHeatmapViewMode(option.value)}
                   className={cn(
-                    "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
-                    heatmapRange === option.value
+                    "rounded-md px-2 py-1 text-[10px] font-medium transition-colors sm:px-2.5 sm:text-[11px]",
+                    heatmapViewMode === option.value
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
                   )}
@@ -195,104 +436,123 @@ export default function Daily() {
                 </button>
               ))}
             </div>
+            {heatmapViewMode === "rolling" && (
+              <div className="grid w-full grid-cols-3 rounded-lg border border-border/45 bg-secondary/30 p-0.5 sm:inline-flex sm:w-auto sm:grid-cols-none">
+                {heatmapRangeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setHeatmapRange(option.value)}
+                    className={cn(
+                      "rounded-md px-2 py-1 text-[10px] font-medium transition-colors sm:px-2.5 sm:text-[11px]",
+                      heatmapRange === option.value
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {heatmapViewMode === "year" && availableYears.length > 0 && (
+              <select
+                value={String(selectedYear)}
+                onChange={(event) => setSelectedYear(Number(event.target.value))}
+                className="w-full rounded-lg border border-border/45 bg-secondary/30 px-2.5 py-1 text-[11px] text-foreground outline-none focus:ring-2 focus:ring-primary/40 sm:min-w-[112px] sm:w-auto"
+              >
+                {availableYears.map((year) => (
+                  <option key={year} value={year}>
+                    Tahun {year}
+                  </option>
+                ))}
+              </select>
+            )}
+            <div className="flex w-full flex-wrap gap-1 sm:max-w-[300px] sm:justify-end">
+              {contributionSourceOptions.map((option) => {
+                const active = selectedSources.includes(option.value);
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => toggleSource(option.value)}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors",
+                      active
+                        ? "border-primary/60 bg-primary/20 text-primary"
+                        : "border-border/45 bg-secondary/20 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-        <div className="overflow-x-auto pb-1">
-          <div
-            className={cn(
-              "grid gap-2",
-              heatmapRange === "1y"
-                ? "grid-cols-[16px_minmax(0,1fr)] w-full"
-                : "grid-cols-[16px_auto] w-max"
-            )}
-          >
-            <div className="grid grid-rows-7 gap-1 pt-[18px]">
-              {["", "M", "", "W", "", "F", ""].map((label, index) => (
-                <span
-                  key={`${label}-${index}`}
+        {heatmapViewMode === "all" ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {allYearHeatmaps.map((section) => {
+              const yearlyActiveDays = section.cells.filter((cell) => cell.count > 0).length;
+              const yearlyContributionCount = section.cells.reduce((sum, cell) => sum + cell.count, 0);
+              const isExpanded = expandedYear === section.year;
+              return (
+                <div
+                  key={section.year}
                   className={cn(
-                    "text-[10px] text-muted-foreground/65",
-                    heatmapRange === "1y" ? "min-h-[12px] flex items-center" : "h-[13px] leading-[13px]"
+                    "rounded-xl border border-border/40 bg-secondary/20 p-2.5 transition-colors",
+                    isExpanded && "lg:col-span-2 p-3 border-primary/25"
                   )}
                 >
-                  {label}
-                </span>
-              ))}
-            </div>
-
-            <div className={heatmapRange === "1y" ? "w-full min-w-[720px]" : "w-max"}>
-              <div
-                className="relative mb-2 h-4"
-                style={{
-                  width: heatmapRange === "1y" ? "100%" : `${weekCount * 16}px`,
-                }}
-              >
-              {monthMarkers.map((marker) => (
-                <span
-                  key={marker.monthKey}
-                  className="absolute top-0 text-[10px] text-muted-foreground/70"
-                  style={{
-                    left:
-                      heatmapRange === "1y"
-                        ? `${(marker.weekIndex / Math.max(1, weekCount - 1)) * 100}%`
-                        : `${marker.weekIndex * 16}px`,
-                  }}
-                >
-                  {marker.label}
-                </span>
-              ))}
-              </div>
-              <div
-                className={cn(
-                  "grid grid-rows-7 gap-1",
-                  heatmapRange === "1y" ? "w-full" : "grid-flow-col auto-cols-[12px] w-max"
-                )}
-                style={
-                  heatmapRange === "1y"
-                    ? { gridAutoFlow: "column", gridTemplateColumns: `repeat(${weekCount}, minmax(0, 1fr))` }
-                    : undefined
-                }
-              >
-                {displayHeatmap.map((cell) => {
-                  const intensityClass = {
-                    0: "bg-secondary/45",
-                    1: "bg-primary/25",
-                    2: "bg-primary/45",
-                    3: "bg-accent/55",
-                    4: "bg-highlight/65",
-                  }[cell.intensity];
-                  const tooltipParts = [
-                    cell.date,
-                    `${cell.count} kontribusi`,
-                    cell.breakdown.daily > 0 ? `Daily ${cell.breakdown.daily}` : "",
-                    cell.breakdown.writing > 0 ? `Writing ${cell.breakdown.writing}` : "",
-                    cell.breakdown.artikel > 0 ? `Artikel ${cell.breakdown.artikel}` : "",
-                  ].filter(Boolean);
-
-                  return (
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div>
+                      <h3 className="font-heading text-sm font-semibold">Tahun {section.year}</h3>
+                      <p className="text-[10px] text-muted-foreground/70">
+                        {yearlyActiveDays} hari aktif • {yearlyContributionCount} kontribusi
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      key={cell.date}
-                      title={tooltipParts.join(" • ")}
-                      aria-label={`Aktivitas ${cell.date}`}
                       onClick={() =>
-                        setSelectedHeatDate((current) => (current === cell.date ? null : cell.date))
+                        setExpandedYear((current) => (current === section.year ? null : section.year))
                       }
                       className={cn(
-                        heatmapRange === "1y"
-                          ? "aspect-square w-full rounded-[3px] border border-border/20 transition-transform hover:scale-105"
-                          : "h-3 w-3 rounded-[3px] border border-border/20 transition-transform hover:scale-110",
-                        intensityClass,
-                        cell.isToday && "ring-1 ring-primary/90",
-                        selectedHeatDate === cell.date && "ring-2 ring-accent/90"
+                        "rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors",
+                        isExpanded
+                          ? "border-primary/60 bg-primary/20 text-primary"
+                          : "border-border/45 bg-secondary/25 text-muted-foreground hover:text-foreground"
                       )}
-                    />
-                  );
-                })}
-              </div>
-            </div>
+                    >
+                      {isExpanded ? "Ringkas" : "Detail"}
+                    </button>
+                  </div>
+                  {renderHeatmapGrid(section.cells, {
+                    fullWidth: true,
+                    minWidthClass: isExpanded ? "min-w-[560px] md:min-w-0" : "min-w-[380px] md:min-w-0",
+                    compact: !isExpanded,
+                    showWeekdayLabels: isExpanded,
+                    showMonthLabels: isExpanded,
+                    disableHorizontalScroll: false,
+                  })}
+                  {!isExpanded && (
+                    <p className="mt-1 text-[10px] text-muted-foreground/65">
+                      Klik detail untuk melihat label bulan dan hari pada tahun ini.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+            {allYearHeatmaps.length === 0 && (
+              <p className="text-sm text-muted-foreground/70">Belum ada data kontribusi untuk ditampilkan.</p>
+            )}
           </div>
-        </div>
+        ) : (
+          renderHeatmapGrid(displayHeatmap, {
+            fullWidth: isFullWidthHeatmap,
+            minWidthClass: isFullWidthHeatmap ? "min-w-[560px] md:min-w-0" : undefined,
+            disableHorizontalScroll: false,
+          })
+        )}
         <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground/65">
           <span>Rendah</span>
           <div className="h-2.5 w-2.5 rounded-[3px] bg-secondary/45 border border-border/20" />
@@ -303,11 +563,14 @@ export default function Daily() {
           <span>Tinggi</span>
         </div>
         <p className="mt-2 text-[11px] text-muted-foreground/60">
-          {heatmapRange === "1y"
-            ? "Mode 1 tahun menampilkan semua bulan agar timeline penuh terlihat."
-            : "Rentang kosong di awal disembunyikan otomatis agar heatmap lebih padat."}
+          {heatmapViewMode === "all"
+            ? "Mode semua menampilkan heatmap ringkas per tahun; gunakan tombol detail untuk membuka tahun tertentu."
+            : heatmapViewMode === "year"
+              ? `Mode tahun menampilkan timeline penuh Januari-Desember ${selectedYear}.`
+              : heatmapRange === "1y"
+                ? "Mode 1 tahun menampilkan semua bulan agar timeline penuh terlihat."
+                : "Rentang kosong di awal disembunyikan otomatis agar heatmap lebih padat."}
         </p>
-
         {selectedHeatCell && (
           <div className="mt-4 rounded-xl border border-border/40 bg-secondary/25 p-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -343,7 +606,12 @@ export default function Daily() {
                       <div className="min-w-0">
                         <p className="truncate text-sm group-hover:text-foreground">{entry.title}</p>
                       </div>
-                      <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", sourceStyle)}>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
+                          sourceStyle
+                        )}
+                      >
                         {sourceLabel}
                       </span>
                     </Link>
@@ -375,7 +643,7 @@ export default function Daily() {
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-[1fr_auto] gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
             <input
               type="date"
               value={jumpDate}
@@ -386,7 +654,7 @@ export default function Daily() {
               type="button"
               onClick={openJumpTarget}
               disabled={!jumpTarget}
-              className="inline-flex items-center gap-1 rounded-xl border border-border/60 px-3 py-2 text-sm text-muted-foreground enabled:hover:text-foreground enabled:hover:bg-secondary/40 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-1 rounded-xl border border-border/60 px-3 py-2 text-sm text-muted-foreground enabled:hover:text-foreground enabled:hover:bg-secondary/40 disabled:opacity-50"
             >
               Buka
               <ArrowUpRight size={14} />

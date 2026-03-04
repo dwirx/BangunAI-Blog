@@ -41,6 +41,13 @@ export interface DailyHeatmapBreakdown {
   artikel: number;
 }
 
+interface HeatmapRangeConfig {
+  startDate: string | Date;
+  endDate: string | Date;
+  referenceDate?: Date;
+  alignToWeeks?: boolean;
+}
+
 function toDateKey(value: string | Date): string {
   const date = new Date(value);
   const year = date.getFullYear();
@@ -245,21 +252,47 @@ export function buildContributionHeatmap(
 ): DailyHeatmapCell[] {
   const days = config.days ?? 90;
   const referenceDate = config.referenceDate ?? new Date();
+  const start = new Date(referenceDate);
+  start.setDate(start.getDate() - (days - 1));
+
+  return buildContributionHeatmapByDateRange(entries, {
+    startDate: start,
+    endDate: referenceDate,
+    referenceDate,
+    alignToWeeks: config.alignToWeeks,
+  });
+}
+
+export function buildContributionHeatmapByDateRange(
+  entries: ContributionEntry[],
+  config: HeatmapRangeConfig
+): DailyHeatmapCell[] {
+  const referenceDate = config.referenceDate ?? new Date();
   const alignToWeeks = config.alignToWeeks ?? false;
   const todayKey = toDateKey(referenceDate);
 
-  let start = new Date(referenceDate);
-  let end = new Date(referenceDate);
-  start.setDate(start.getDate() - (days - 1));
+  let start = new Date(config.startDate);
+  let end = new Date(config.endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+
+  if (start > end) {
+    const tmp = start;
+    start = end;
+    end = tmp;
+  }
 
   if (alignToWeeks) {
     start = startOfWeek(start);
     end = endOfWeek(end);
+  } else {
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
   }
 
   const startKey = toDateKey(start);
+  const endKey = toDateKey(end);
   const totalDays =
-    Math.floor((new Date(`${toDateKey(end)}T00:00:00`).getTime() - new Date(`${startKey}T00:00:00`).getTime()) / 86400000) + 1;
+    Math.floor((new Date(`${endKey}T00:00:00`).getTime() - new Date(`${startKey}T00:00:00`).getTime()) / 86400000) + 1;
 
   const entriesByDate = new Map<string, ContributionEntry[]>();
   entries.forEach((entry) => {
@@ -293,6 +326,31 @@ export function buildContributionHeatmap(
   }
 
   return cells;
+}
+
+export function buildContributionHeatmapForYear(
+  entries: ContributionEntry[],
+  year: number,
+  config: { referenceDate?: Date; alignToWeeks?: boolean } = {}
+) {
+  const yearPrefix = `${year}-`;
+  const yearEntries = entries.filter((entry) => toDateKey(entry.date).startsWith(yearPrefix));
+
+  return buildContributionHeatmapByDateRange(yearEntries, {
+    startDate: `${year}-01-01`,
+    endDate: `${year}-12-31`,
+    referenceDate: config.referenceDate,
+    alignToWeeks: config.alignToWeeks,
+  });
+}
+
+export function getContributionYears(entries: ContributionEntry[]) {
+  const years = new Set<number>();
+  entries.forEach((entry) => {
+    const year = new Date(entry.date).getFullYear();
+    if (!Number.isNaN(year)) years.add(year);
+  });
+  return [...years].sort((a, b) => b - a);
 }
 
 export function getContributionRangeDays(range: ContributionRange) {

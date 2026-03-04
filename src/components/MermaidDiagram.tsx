@@ -13,15 +13,25 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
   const idRef = useRef(`mermaid-${++mermaidIdCounter}-${Date.now()}`);
 
   const renderChart = useCallback(async () => {
-    if (!chart.trim()) return;
+    const rawChart = chart.trim();
+    if (!rawChart) {
+      setSvgHtml("");
+      setError("");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      setError("");
+      setSvgHtml("");
       const mermaid = (await import("mermaid")).default;
       const isLight = document.documentElement.classList.contains("light");
 
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: "loose",
+        suppressErrorRendering: true,
         theme: isLight ? "default" : "dark",
         themeVariables: isLight
           ? {
@@ -92,9 +102,26 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
 
       const uniqueId = `mermaid-${++mermaidIdCounter}-${Date.now()}`;
       idRef.current = uniqueId;
-      const { svg } = await mermaid.render(uniqueId, chart.trim());
+      const { svg } = await mermaid.render(uniqueId, rawChart);
+
+      // Mermaid injects some internal class names in generated SVG styles.
+      // Only treat it as invalid when the rendered SVG explicitly contains
+      // the visible syntax-error text node.
+      try {
+        const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+        const renderedErrorText = doc.querySelector("text.error-text")?.textContent ?? "";
+        if (/syntax error in text/i.test(renderedErrorText)) {
+          throw new Error("Sintaks diagram Mermaid tidak valid.");
+        }
+      } catch (parseError) {
+        // If DOM parsing fails, do not block valid SVG output.
+        // Rendering fallback is handled by Mermaid throw/catch above.
+        if (parseError instanceof Error && /Sintaks diagram Mermaid/i.test(parseError.message)) {
+          throw parseError;
+        }
+      }
+
       setSvgHtml(svg);
-      setError("");
     } catch (e: unknown) {
       console.error("Mermaid render error:", e);
       const message = e instanceof Error ? e.message : String(e);
@@ -118,9 +145,14 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
 
   if (error) {
     return (
-      <div className="my-6 p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-sm text-destructive font-mono">
-        <p className="font-semibold mb-1">Mermaid Error</p>
-        <p className="opacity-70 text-xs break-all">{error}</p>
+      <div className="my-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+        <p className="text-xs font-medium text-amber-300">Diagram tidak dapat ditampilkan.</p>
+        <details className="mt-1">
+          <summary className="cursor-pointer text-[11px] text-muted-foreground/70">
+            Lihat detail teknis
+          </summary>
+          <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground/75">{error}</p>
+        </details>
       </div>
     );
   }

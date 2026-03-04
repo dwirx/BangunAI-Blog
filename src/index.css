@@ -418,6 +418,12 @@
   max-width: 100%;
 }
 
+/* Guard: never show Mermaid built-in parse-error graphics in UI */
+.mermaid-container svg .error-icon,
+.mermaid-container svg .error-text {
+  display: none !important;
+}
+
 .mermaid-container svg text,
 .mermaid-container svg .messageText,
 .mermaid-container svg .loopText,

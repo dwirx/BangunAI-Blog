@@ -3,11 +3,14 @@ import type { DailyNote } from "@/data/types";
 import {
   buildContributionEntries,
   buildContributionHeatmap,
+  buildContributionHeatmapByDateRange,
+  buildContributionHeatmapForYear,
   buildDailyActivityMap,
   buildDailyHeatmap,
   compressHeatmapByActivity,
   filterDailyNotes,
   findClosestDailyNote,
+  getContributionYears,
   getContributionRangeDays,
   getDailyMonthOptions,
   getDailyStreakStats,
@@ -190,5 +193,59 @@ describe("daily utils", () => {
     expect(compactWeeks).toBeLessThan(rawWeeks);
     expect(compact.length % 7).toBe(0);
     expect(compact.some((cell) => cell.count > 0)).toBe(true);
+  });
+
+  it("builds contribution heatmap for exact date range", () => {
+    const entries = buildContributionEntries(notes, posts);
+    const heatmap = buildContributionHeatmapByDateRange(entries, {
+      startDate: "2026-02-27",
+      endDate: "2026-03-02",
+      alignToWeeks: false,
+      referenceDate: new Date("2026-03-10T09:00:00"),
+    });
+
+    expect(heatmap.map((cell) => cell.date)).toEqual([
+      "2026-02-27",
+      "2026-02-28",
+      "2026-03-01",
+      "2026-03-02",
+    ]);
+    expect(heatmap.find((cell) => cell.date === "2026-02-28")?.count).toBe(2);
+  });
+
+  it("builds full-year heatmap and derives available years", () => {
+    const entries = buildContributionEntries(notes, posts);
+    const years = getContributionYears(entries);
+    expect(years).toEqual([2026]);
+
+    const heatmap = buildContributionHeatmapForYear(entries, 2026, {
+      alignToWeeks: true,
+      referenceDate: new Date("2026-03-10T09:00:00"),
+    });
+    expect(heatmap.length % 7).toBe(0);
+    expect(heatmap[0].date).toBe("2025-12-28");
+    expect(heatmap.at(-1)?.date).toBe("2027-01-02");
+  });
+
+  it("keeps padded boundary days empty for selected year", () => {
+    const entries = buildContributionEntries(notes, posts);
+    const extraBoundaryEntries = [
+      ...entries,
+      {
+        id: "daily:outside-year",
+        title: "Outside Year",
+        date: "2025-12-31",
+        url: "/daily/outside-year",
+        kind: "daily" as const,
+      },
+    ];
+
+    const heatmap = buildContributionHeatmapForYear(extraBoundaryEntries, 2026, {
+      alignToWeeks: true,
+      referenceDate: new Date("2026-03-10T09:00:00"),
+    });
+
+    expect(heatmap.find((cell) => cell.date === "2025-12-31")?.count).toBe(0);
+    expect(heatmap.find((cell) => cell.date === "2026-03-10")?.count).toBeGreaterThan(0);
   });
 });
