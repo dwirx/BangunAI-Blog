@@ -11,6 +11,8 @@ export interface DailyHeatmapCell {
   count: number;
   intensity: 0 | 1 | 2 | 3 | 4;
   isToday: boolean;
+  weekday: number;
+  weekIndex: number;
   entries: ContributionEntry[];
   breakdown: DailyHeatmapBreakdown;
 }
@@ -23,6 +25,7 @@ export interface DailyStreakStats {
 }
 
 export type ContributionKind = "daily" | "writing" | "artikel";
+export type ContributionRange = "3m" | "6m" | "1y";
 
 export interface ContributionEntry {
   id: string;
@@ -65,6 +68,19 @@ function buildBreakdown(entries: ContributionEntry[]): DailyHeatmapBreakdown {
     },
     { daily: 0, writing: 0, artikel: 0 }
   );
+}
+
+function startOfWeek(date: Date) {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  value.setDate(value.getDate() - value.getDay());
+  return value;
+}
+
+function endOfWeek(date: Date) {
+  const value = startOfWeek(date);
+  value.setDate(value.getDate() + 6);
+  return value;
 }
 
 export function buildDailyActivityMap(notes: DailyNote[]) {
@@ -225,14 +241,25 @@ export function buildContributionEntries(
 
 export function buildContributionHeatmap(
   entries: ContributionEntry[],
-  config: { days?: number; referenceDate?: Date } = {}
+  config: { days?: number; referenceDate?: Date; alignToWeeks?: boolean } = {}
 ): DailyHeatmapCell[] {
   const days = config.days ?? 90;
   const referenceDate = config.referenceDate ?? new Date();
+  const alignToWeeks = config.alignToWeeks ?? false;
   const todayKey = toDateKey(referenceDate);
-  const start = new Date(referenceDate);
+
+  let start = new Date(referenceDate);
+  let end = new Date(referenceDate);
   start.setDate(start.getDate() - (days - 1));
+
+  if (alignToWeeks) {
+    start = startOfWeek(start);
+    end = endOfWeek(end);
+  }
+
   const startKey = toDateKey(start);
+  const totalDays =
+    Math.floor((new Date(`${toDateKey(end)}T00:00:00`).getTime() - new Date(`${startKey}T00:00:00`).getTime()) / 86400000) + 1;
 
   const entriesByDate = new Map<string, ContributionEntry[]>();
   entries.forEach((entry) => {
@@ -246,9 +273,10 @@ export function buildContributionHeatmap(
   const cells: DailyHeatmapCell[] = [];
 
   let cursorKey = startKey;
-  for (let i = 0; i < days; i++) {
+  for (let i = 0; i < totalDays; i++) {
     const dayEntries = entriesByDate.get(cursorKey) ?? [];
     const count = dayEntries.length;
+    const weekday = new Date(`${cursorKey}T00:00:00`).getDay();
     const intensity =
       count === 0 ? 0 : (Math.min(4, Math.max(1, Math.ceil((count / maxCount) * 4))) as 1 | 2 | 3 | 4);
     cells.push({
@@ -256,6 +284,8 @@ export function buildContributionHeatmap(
       count,
       intensity,
       isToday: cursorKey === todayKey,
+      weekday,
+      weekIndex: Math.floor(i / 7),
       entries: dayEntries,
       breakdown: buildBreakdown(dayEntries),
     });
@@ -263,4 +293,10 @@ export function buildContributionHeatmap(
   }
 
   return cells;
+}
+
+export function getContributionRangeDays(range: ContributionRange) {
+  if (range === "3m") return 84;
+  if (range === "6m") return 168;
+  return 364;
 }

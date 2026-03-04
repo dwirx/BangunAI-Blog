@@ -6,6 +6,8 @@ import FilterChips from "@/components/FilterChips";
 import {
   buildContributionEntries,
   buildContributionHeatmap,
+  getContributionRangeDays,
+  type ContributionRange,
   filterDailyNotes,
   findClosestDailyNote,
   getDailyMonthOptions,
@@ -21,17 +23,32 @@ function formatDailyDate(dateStr: string) {
   });
 }
 
+const heatmapRangeOptions: Array<{ value: ContributionRange; label: string }> = [
+  { value: "3m", label: "3 Bulan" },
+  { value: "6m", label: "6 Bulan" },
+  { value: "1y", label: "1 Tahun" },
+];
+
 export default function Daily() {
   const navigate = useNavigate();
   const [monthFilter, setMonthFilter] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [jumpDate, setJumpDate] = useState("");
+  const [heatmapRange, setHeatmapRange] = useState<ContributionRange>("6m");
   const [selectedHeatDate, setSelectedHeatDate] = useState<string | null>(null);
 
   const currentYear = new Date().getFullYear();
   const streak = useMemo(() => getDailyStreakStats(dailyNotes), []);
   const contributionEntries = useMemo(() => buildContributionEntries(dailyNotes, posts), []);
-  const heatmap = useMemo(() => buildContributionHeatmap(contributionEntries, { days: 112 }), [contributionEntries]);
+  const heatmapDays = useMemo(() => getContributionRangeDays(heatmapRange), [heatmapRange]);
+  const heatmap = useMemo(
+    () =>
+      buildContributionHeatmap(contributionEntries, {
+        days: heatmapDays,
+        alignToWeeks: true,
+      }),
+    [contributionEntries, heatmapDays]
+  );
   const monthMarkers = useMemo(() => {
     const seen = new Set<string>();
     return heatmap.flatMap((cell, index) => {
@@ -133,14 +150,47 @@ export default function Daily() {
 
       <section className="mb-10 glass-card">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="font-heading text-xl font-semibold">Aktivitas 16 Minggu</h2>
-          <span className="text-xs text-muted-foreground/65">
-            Hari aktif: {heatmap.filter((cell) => cell.count > 0).length}
-          </span>
+          <div>
+            <h2 className="font-heading text-xl font-semibold">Contribution Heatmap</h2>
+            <p className="text-xs text-muted-foreground/65 mt-1">
+              Sumber: Daily + Writing + Artikel
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <span className="text-xs text-muted-foreground/65">
+              Hari aktif: {heatmap.filter((cell) => cell.count > 0).length}
+            </span>
+            <div className="inline-flex rounded-lg border border-border/45 bg-secondary/30 p-0.5">
+              {heatmapRangeOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setHeatmapRange(option.value)}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    heatmapRange === option.value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="overflow-x-auto pb-1">
-          <div className="w-max">
-            <div className="relative mb-2 h-4" style={{ width: `${Math.ceil(heatmap.length / 7) * 16}px` }}>
+          <div className="grid grid-cols-[16px_auto] gap-2 w-max">
+            <div className="grid grid-rows-7 gap-1 pt-[18px]">
+              {["", "M", "", "W", "", "F", ""].map((label, index) => (
+                <span key={`${label}-${index}`} className="h-[13px] text-[10px] leading-[13px] text-muted-foreground/65">
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            <div className="w-max">
+              <div className="relative mb-2 h-4" style={{ width: `${Math.ceil(heatmap.length / 7) * 16}px` }}>
               {monthMarkers.map((marker) => (
                 <span
                   key={marker.monthKey}
@@ -150,42 +200,43 @@ export default function Daily() {
                   {marker.label}
                 </span>
               ))}
-            </div>
-            <div className="grid grid-flow-col auto-cols-[12px] grid-rows-7 gap-1 w-max">
-            {heatmap.map((cell) => {
-              const intensityClass = {
-                0: "bg-secondary/45",
-                1: "bg-primary/25",
-                2: "bg-primary/45",
-                3: "bg-accent/55",
-                4: "bg-highlight/65",
-              }[cell.intensity];
-              const tooltipParts = [
-                cell.date,
-                `${cell.count} kontribusi`,
-                cell.breakdown.daily > 0 ? `Daily ${cell.breakdown.daily}` : "",
-                cell.breakdown.writing > 0 ? `Writing ${cell.breakdown.writing}` : "",
-                cell.breakdown.artikel > 0 ? `Artikel ${cell.breakdown.artikel}` : "",
-              ].filter(Boolean);
+              </div>
+              <div className="grid grid-flow-col auto-cols-[12px] grid-rows-7 gap-1 w-max">
+                {heatmap.map((cell) => {
+                  const intensityClass = {
+                    0: "bg-secondary/45",
+                    1: "bg-primary/25",
+                    2: "bg-primary/45",
+                    3: "bg-accent/55",
+                    4: "bg-highlight/65",
+                  }[cell.intensity];
+                  const tooltipParts = [
+                    cell.date,
+                    `${cell.count} kontribusi`,
+                    cell.breakdown.daily > 0 ? `Daily ${cell.breakdown.daily}` : "",
+                    cell.breakdown.writing > 0 ? `Writing ${cell.breakdown.writing}` : "",
+                    cell.breakdown.artikel > 0 ? `Artikel ${cell.breakdown.artikel}` : "",
+                  ].filter(Boolean);
 
-              return (
-                <button
-                  type="button"
-                  key={cell.date}
-                  title={tooltipParts.join(" • ")}
-                  aria-label={`Aktivitas ${cell.date}`}
-                  onClick={() =>
-                    setSelectedHeatDate((current) => (current === cell.date ? null : cell.date))
-                  }
-                  className={cn(
-                    "h-3 w-3 rounded-[3px] border border-border/20",
-                    intensityClass,
-                    cell.isToday && "ring-1 ring-primary/90",
-                    selectedHeatDate === cell.date && "ring-2 ring-accent/90"
-                  )}
-                />
-              );
-            })}
+                  return (
+                    <button
+                      type="button"
+                      key={cell.date}
+                      title={tooltipParts.join(" • ")}
+                      aria-label={`Aktivitas ${cell.date}`}
+                      onClick={() =>
+                        setSelectedHeatDate((current) => (current === cell.date ? null : cell.date))
+                      }
+                      className={cn(
+                        "h-3 w-3 rounded-[3px] border border-border/20",
+                        intensityClass,
+                        cell.isToday && "ring-1 ring-primary/90",
+                        selectedHeatDate === cell.date && "ring-2 ring-accent/90"
+                      )}
+                    />
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

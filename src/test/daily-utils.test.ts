@@ -7,6 +7,7 @@ import {
   buildDailyHeatmap,
   filterDailyNotes,
   findClosestDailyNote,
+  getContributionRangeDays,
   getDailyMonthOptions,
   getDailyStreakStats,
 } from "@/lib/daily";
@@ -150,5 +151,26 @@ describe("daily utils", () => {
     expect(today.breakdown.daily).toBe(1);
     expect(today.breakdown.artikel).toBe(1);
     expect(today.entries.some((entry) => entry.title === "Artikel A")).toBe(true);
+  });
+
+  it("maps contribution range to expected day windows", () => {
+    expect(getContributionRangeDays("3m")).toBe(84);
+    expect(getContributionRangeDays("6m")).toBe(168);
+    expect(getContributionRangeDays("1y")).toBe(364);
+  });
+
+  it("can align heatmap output into full week columns", () => {
+    const entries = buildContributionEntries(notes, posts);
+    const heatmap = buildContributionHeatmap(entries, {
+      days: 10,
+      referenceDate: new Date("2026-03-10T09:00:00"),
+      alignToWeeks: true,
+    });
+
+    expect(heatmap.length % 7).toBe(0);
+    expect(heatmap[0].date).toBe("2026-03-01");
+    expect(heatmap[0].weekday).toBe(0);
+    expect(heatmap[1].weekday).toBe(1);
+    expect(heatmap.at(-1)?.date).toBe("2026-03-14");
   });
 });
