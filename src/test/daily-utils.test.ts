@@ -5,6 +5,7 @@ import {
   buildContributionHeatmap,
   buildDailyActivityMap,
   buildDailyHeatmap,
+  compressHeatmapByActivity,
   filterDailyNotes,
   findClosestDailyNote,
   getContributionRangeDays,
@@ -172,5 +173,22 @@ describe("daily utils", () => {
     expect(heatmap[0].weekday).toBe(0);
     expect(heatmap[1].weekday).toBe(1);
     expect(heatmap.at(-1)?.date).toBe("2026-03-14");
+  });
+
+  it("compresses leading empty weeks while preserving active period context", () => {
+    const entries = buildContributionEntries(notes, posts);
+    const heatmap = buildContributionHeatmap(entries, {
+      days: 56,
+      referenceDate: new Date("2026-03-10T09:00:00"),
+      alignToWeeks: true,
+    });
+
+    const compact = compressHeatmapByActivity(heatmap, { minWeeks: 8 });
+    const rawWeeks = Math.max(...heatmap.map((cell) => cell.weekIndex)) + 1;
+    const compactWeeks = Math.max(...compact.map((cell) => cell.weekIndex)) + 1;
+
+    expect(compactWeeks).toBeLessThan(rawWeeks);
+    expect(compact.length % 7).toBe(0);
+    expect(compact.some((cell) => cell.count > 0)).toBe(true);
   });
 });

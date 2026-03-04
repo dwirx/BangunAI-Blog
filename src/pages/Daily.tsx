@@ -6,6 +6,7 @@ import FilterChips from "@/components/FilterChips";
 import {
   buildContributionEntries,
   buildContributionHeatmap,
+  compressHeatmapByActivity,
   getContributionRangeDays,
   type ContributionRange,
   filterDailyNotes,
@@ -49,24 +50,41 @@ export default function Daily() {
       }),
     [contributionEntries, heatmapDays]
   );
+  const compactHeatmap = useMemo(
+    () =>
+      compressHeatmapByActivity(heatmap, {
+        leadingContextWeeks: 2,
+        trailingContextWeeks: 1,
+        minWeeks: 10,
+      }),
+    [heatmap]
+  );
+  const displayHeatmap = useMemo(
+    () => (heatmapRange === "1y" ? heatmap : compactHeatmap),
+    [heatmapRange, heatmap, compactHeatmap]
+  );
+  const weekCount = useMemo(
+    () => Math.max(1, Math.max(0, ...displayHeatmap.map((cell) => cell.weekIndex)) + 1),
+    [displayHeatmap]
+  );
   const monthMarkers = useMemo(() => {
     const seen = new Set<string>();
-    return heatmap.flatMap((cell, index) => {
+    return displayHeatmap.flatMap((cell) => {
       const monthKey = cell.date.slice(0, 7);
       if (seen.has(monthKey)) return [];
       seen.add(monthKey);
       return [
         {
-          weekIndex: Math.floor(index / 7),
+          weekIndex: cell.weekIndex,
           label: new Date(`${monthKey}-01T00:00:00`).toLocaleDateString("id-ID", { month: "short" }),
           monthKey,
         },
       ];
     });
-  }, [heatmap]);
+  }, [displayHeatmap]);
   const selectedHeatCell = useMemo(
-    () => heatmap.find((cell) => cell.date === selectedHeatDate) ?? null,
-    [heatmap, selectedHeatDate]
+    () => displayHeatmap.find((cell) => cell.date === selectedHeatDate) ?? null,
+    [displayHeatmap, selectedHeatDate]
   );
   const monthOptions = useMemo(() => getDailyMonthOptions(dailyNotes), []);
   const allTags = useMemo(
@@ -180,29 +198,62 @@ export default function Daily() {
           </div>
         </div>
         <div className="overflow-x-auto pb-1">
-          <div className="grid grid-cols-[16px_auto] gap-2 w-max">
+          <div
+            className={cn(
+              "grid gap-2",
+              heatmapRange === "1y"
+                ? "grid-cols-[16px_minmax(0,1fr)] w-full"
+                : "grid-cols-[16px_auto] w-max"
+            )}
+          >
             <div className="grid grid-rows-7 gap-1 pt-[18px]">
               {["", "M", "", "W", "", "F", ""].map((label, index) => (
-                <span key={`${label}-${index}`} className="h-[13px] text-[10px] leading-[13px] text-muted-foreground/65">
+                <span
+                  key={`${label}-${index}`}
+                  className={cn(
+                    "text-[10px] text-muted-foreground/65",
+                    heatmapRange === "1y" ? "min-h-[12px] flex items-center" : "h-[13px] leading-[13px]"
+                  )}
+                >
                   {label}
                 </span>
               ))}
             </div>
 
-            <div className="w-max">
-              <div className="relative mb-2 h-4" style={{ width: `${Math.ceil(heatmap.length / 7) * 16}px` }}>
+            <div className={heatmapRange === "1y" ? "w-full min-w-[720px]" : "w-max"}>
+              <div
+                className="relative mb-2 h-4"
+                style={{
+                  width: heatmapRange === "1y" ? "100%" : `${weekCount * 16}px`,
+                }}
+              >
               {monthMarkers.map((marker) => (
                 <span
                   key={marker.monthKey}
                   className="absolute top-0 text-[10px] text-muted-foreground/70"
-                  style={{ left: `${marker.weekIndex * 16}px` }}
+                  style={{
+                    left:
+                      heatmapRange === "1y"
+                        ? `${(marker.weekIndex / Math.max(1, weekCount - 1)) * 100}%`
+                        : `${marker.weekIndex * 16}px`,
+                  }}
                 >
                   {marker.label}
                 </span>
               ))}
               </div>
-              <div className="grid grid-flow-col auto-cols-[12px] grid-rows-7 gap-1 w-max">
-                {heatmap.map((cell) => {
+              <div
+                className={cn(
+                  "grid grid-rows-7 gap-1",
+                  heatmapRange === "1y" ? "w-full" : "grid-flow-col auto-cols-[12px] w-max"
+                )}
+                style={
+                  heatmapRange === "1y"
+                    ? { gridAutoFlow: "column", gridTemplateColumns: `repeat(${weekCount}, minmax(0, 1fr))` }
+                    : undefined
+                }
+              >
+                {displayHeatmap.map((cell) => {
                   const intensityClass = {
                     0: "bg-secondary/45",
                     1: "bg-primary/25",
@@ -228,7 +279,9 @@ export default function Daily() {
                         setSelectedHeatDate((current) => (current === cell.date ? null : cell.date))
                       }
                       className={cn(
-                        "h-3 w-3 rounded-[3px] border border-border/20",
+                        heatmapRange === "1y"
+                          ? "aspect-square w-full rounded-[3px] border border-border/20 transition-transform hover:scale-105"
+                          : "h-3 w-3 rounded-[3px] border border-border/20 transition-transform hover:scale-110",
                         intensityClass,
                         cell.isToday && "ring-1 ring-primary/90",
                         selectedHeatDate === cell.date && "ring-2 ring-accent/90"
@@ -249,6 +302,11 @@ export default function Daily() {
           <div className="h-2.5 w-2.5 rounded-[3px] bg-highlight/65 border border-border/20" />
           <span>Tinggi</span>
         </div>
+        <p className="mt-2 text-[11px] text-muted-foreground/60">
+          {heatmapRange === "1y"
+            ? "Mode 1 tahun menampilkan semua bulan agar timeline penuh terlihat."
+            : "Rentang kosong di awal disembunyikan otomatis agar heatmap lebih padat."}
+        </p>
 
         {selectedHeatCell && (
           <div className="mt-4 rounded-xl border border-border/40 bg-secondary/25 p-3">

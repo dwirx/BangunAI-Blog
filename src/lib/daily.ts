@@ -300,3 +300,49 @@ export function getContributionRangeDays(range: ContributionRange) {
   if (range === "6m") return 168;
   return 364;
 }
+
+export function compressHeatmapByActivity(
+  cells: DailyHeatmapCell[],
+  options: { leadingContextWeeks?: number; trailingContextWeeks?: number; minWeeks?: number } = {}
+) {
+  if (cells.length === 0) return [];
+
+  const leadingContextWeeks = options.leadingContextWeeks ?? 2;
+  const trailingContextWeeks = options.trailingContextWeeks ?? 1;
+  const minWeeks = options.minWeeks ?? 12;
+  const maxWeek = Math.max(...cells.map((cell) => cell.weekIndex));
+  const weekHasActivity = new Map<number, boolean>();
+
+  cells.forEach((cell) => {
+    if (cell.count > 0) weekHasActivity.set(cell.weekIndex, true);
+  });
+
+  const activeWeeks = [...weekHasActivity.keys()].sort((a, b) => a - b);
+  if (activeWeeks.length === 0) {
+    const startWeek = Math.max(0, maxWeek - (minWeeks - 1));
+    return cells
+      .filter((cell) => cell.weekIndex >= startWeek)
+      .map((cell) => ({ ...cell, weekIndex: cell.weekIndex - startWeek }));
+  }
+
+  let startWeek = Math.max(0, activeWeeks[0] - leadingContextWeeks);
+  let endWeek = Math.min(maxWeek, activeWeeks[activeWeeks.length - 1] + trailingContextWeeks);
+
+  const windowSize = endWeek - startWeek + 1;
+  if (windowSize < minWeeks) {
+    const shortage = minWeeks - windowSize;
+    const extraBefore = Math.min(startWeek, Math.ceil(shortage / 2));
+    startWeek -= extraBefore;
+    const remaining = shortage - extraBefore;
+    const extraAfter = Math.min(maxWeek - endWeek, remaining);
+    endWeek += extraAfter;
+    const stillMissing = minWeeks - (endWeek - startWeek + 1);
+    if (stillMissing > 0) {
+      startWeek = Math.max(0, startWeek - stillMissing);
+    }
+  }
+
+  return cells
+    .filter((cell) => cell.weekIndex >= startWeek && cell.weekIndex <= endWeek)
+    .map((cell) => ({ ...cell, weekIndex: cell.weekIndex - startWeek }));
+}
