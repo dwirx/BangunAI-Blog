@@ -111,6 +111,16 @@ function getLuminance([r, g, b]: [number, number, number]) {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 }
 
+function estimateLabelWidth(text: string) {
+  const normalized = text.trim();
+  if (!normalized) return 0;
+  const lines = normalized.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const longest = lines.length
+    ? Math.max(...lines.map((line) => line.length))
+    : normalized.length;
+  return Math.min(520, Math.max(150, Math.round(22 + longest * 8.2)));
+}
+
 function applyNodeLabelContrast(svg: string) {
   const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
   const renderedErrorText = doc.querySelector("text.error-text")?.textContent ?? "";
@@ -119,8 +129,8 @@ function applyNodeLabelContrast(svg: string) {
   }
 
   const cssFillMap = collectCssFillMap(doc);
-  const groups = doc.querySelectorAll("g.node, g.cluster");
-  groups.forEach((group) => {
+  const nodeGroups = doc.querySelectorAll("g.node");
+  nodeGroups.forEach((group) => {
     const bg = group.querySelector("rect, polygon, ellipse, circle, path");
     const fill = resolveNodeFill(group, bg, cssFillMap);
     if (!fill) return;
@@ -149,6 +159,63 @@ function applyNodeLabelContrast(svg: string) {
       htmlNode.setAttribute(
         "style",
         `${style};color:${textColor} !important;-webkit-text-fill-color:${textColor} !important;fill:${textColor} !important;font-weight:700 !important;text-shadow:${shadow};`
+      );
+    });
+  });
+
+  const clusterGroups = doc.querySelectorAll("g.cluster");
+  clusterGroups.forEach((group) => {
+    const bg = group.querySelector("rect, polygon, ellipse, circle, path");
+    const fill = resolveNodeFill(group, bg, cssFillMap);
+    const rgb = fill ? parseColorToRgb(fill) : null;
+    const isLightBackground = rgb ? getLuminance(rgb) > 0.62 : false;
+    const textColor = isLightBackground ? "#111827" : "#f8fafc";
+
+    group.querySelectorAll("text").forEach((textNode) => {
+      const style = textNode.getAttribute("style") ?? "";
+      textNode.setAttribute("fill", textColor);
+      textNode.setAttribute("style", `${style};fill:${textColor} !important;stroke:none;font-weight:600;`);
+    });
+
+    group.querySelectorAll("foreignObject *").forEach((htmlNode) => {
+      const style = htmlNode.getAttribute("style") ?? "";
+      htmlNode.setAttribute(
+        "style",
+        `${style};color:${textColor} !important;-webkit-text-fill-color:${textColor} !important;fill:${textColor} !important;font-weight:600 !important;white-space:normal !important;overflow:visible !important;text-overflow:clip !important;`
+      );
+    });
+  });
+
+  const clusterLabelGroups = doc.querySelectorAll(
+    "g.cluster-label, g.clusterLabel, g[class*='cluster'][class*='label']"
+  );
+  clusterLabelGroups.forEach((group) => {
+    const textContent = group.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    const foreignObject = group.querySelector("foreignObject");
+    if (foreignObject) {
+      const currentWidth = Number.parseFloat(foreignObject.getAttribute("width") ?? "");
+      const estimatedWidth = estimateLabelWidth(textContent);
+
+      if (Number.isFinite(currentWidth) && currentWidth > 0 && estimatedWidth > currentWidth) {
+        const x = Number.parseFloat(foreignObject.getAttribute("x") ?? "0");
+        if (Number.isFinite(x)) {
+          foreignObject.setAttribute("x", `${x - (estimatedWidth - currentWidth) / 2}`);
+        }
+        foreignObject.setAttribute("width", `${estimatedWidth}`);
+      }
+
+      const foStyle = foreignObject.getAttribute("style") ?? "";
+      foreignObject.setAttribute(
+        "style",
+        `${foStyle};overflow:visible !important;max-width:none !important;`
+      );
+    }
+
+    group.querySelectorAll("foreignObject *").forEach((htmlNode) => {
+      const style = htmlNode.getAttribute("style") ?? "";
+      htmlNode.setAttribute(
+        "style",
+        `${style};max-width:none !important;width:fit-content !important;white-space:nowrap !important;overflow:visible !important;text-overflow:clip !important;font-weight:600 !important;`
       );
     });
   });

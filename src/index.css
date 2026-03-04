@@ -433,6 +433,21 @@
   letter-spacing: 0.01em;
 }
 
+.mermaid-container svg .cluster-label foreignObject,
+.mermaid-container svg .cluster-label foreignObject div,
+.mermaid-container svg .cluster-label foreignObject span,
+.mermaid-container svg .clusterLabel foreignObject,
+.mermaid-container svg .clusterLabel foreignObject div,
+.mermaid-container svg .clusterLabel foreignObject span,
+.mermaid-container svg g[class*="cluster"][class*="label"] foreignObject,
+.mermaid-container svg g[class*="cluster"][class*="label"] foreignObject div,
+.mermaid-container svg g[class*="cluster"][class*="label"] foreignObject span {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  max-width: none !important;
+}
+
 .dark .mermaid-container {
   background: linear-gradient(160deg, hsl(236 34% 12% / 0.9), hsl(231 30% 9% / 0.88));
   border-color: hsl(36 28% 36% / 0.45);
