@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { DailyNote } from "@/data/types";
 import {
+  buildContributionEntries,
+  buildContributionHeatmap,
   buildDailyActivityMap,
   buildDailyHeatmap,
   filterDailyNotes,
@@ -8,6 +10,7 @@ import {
   getDailyMonthOptions,
   getDailyStreakStats,
 } from "@/lib/daily";
+import type { Post } from "@/data/types";
 
 const notes: DailyNote[] = [
   {
@@ -51,6 +54,29 @@ const notes: DailyNote[] = [
     date: "2026-02-28",
     summary: "s6",
     tags: ["ai"],
+  },
+];
+
+const posts: Post[] = [
+  {
+    slug: "post-article",
+    title: "Artikel A",
+    summary: "artikel",
+    type: "article",
+    category: "Tech",
+    tags: ["ai"],
+    date: "2026-03-10",
+    readingTime: 6,
+  },
+  {
+    slug: "post-writing",
+    title: "Writing A",
+    summary: "writing",
+    type: "essay",
+    category: "Tech",
+    tags: ["daily"],
+    date: "2026-03-09",
+    readingTime: 4,
   },
 ];
 
@@ -102,5 +128,27 @@ describe("daily utils", () => {
     expect(heatmap[4].isToday).toBe(true);
     expect(heatmap.find((cell) => cell.date === "2026-03-07")?.intensity).toBe(0);
     expect(heatmap.find((cell) => cell.date === "2026-03-08")?.intensity).toBeGreaterThan(0);
+  });
+
+  it("builds contribution entries across daily, writing, and article", () => {
+    const entries = buildContributionEntries(notes, posts);
+    expect(entries.find((entry) => entry.kind === "daily")).toBeDefined();
+    expect(entries.find((entry) => entry.kind === "writing")?.url).toBe("/writing/post-writing");
+    expect(entries.find((entry) => entry.kind === "artikel")?.url).toBe("/artikel/post-article");
+  });
+
+  it("builds contribution heatmap cells with clickable date breakdown", () => {
+    const entries = buildContributionEntries(notes, posts);
+    const heatmap = buildContributionHeatmap(entries, {
+      days: 3,
+      referenceDate: new Date("2026-03-10T09:00:00"),
+    });
+
+    const today = heatmap[2];
+    expect(today.date).toBe("2026-03-10");
+    expect(today.count).toBe(2);
+    expect(today.breakdown.daily).toBe(1);
+    expect(today.breakdown.artikel).toBe(1);
+    expect(today.entries.some((entry) => entry.title === "Artikel A")).toBe(true);
   });
 });

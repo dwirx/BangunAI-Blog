@@ -1,4 +1,4 @@
-import type { DailyNote } from "@/data/types";
+import type { DailyNote, Post } from "@/data/types";
 
 export interface DailyMonthOption {
   value: string;
@@ -11,6 +11,8 @@ export interface DailyHeatmapCell {
   count: number;
   intensity: 0 | 1 | 2 | 3 | 4;
   isToday: boolean;
+  entries: ContributionEntry[];
+  breakdown: DailyHeatmapBreakdown;
 }
 
 export interface DailyStreakStats {
@@ -18,6 +20,22 @@ export interface DailyStreakStats {
   longest: number;
   activeDays: number;
   lastEntryDate: string | null;
+}
+
+export type ContributionKind = "daily" | "writing" | "artikel";
+
+export interface ContributionEntry {
+  id: string;
+  title: string;
+  date: string;
+  url: string;
+  kind: ContributionKind;
+}
+
+export interface DailyHeatmapBreakdown {
+  daily: number;
+  writing: number;
+  artikel: number;
 }
 
 function toDateKey(value: string | Date): string {
@@ -37,6 +55,16 @@ function shiftDateKey(dateKey: string, deltaDays: number): string {
 function toMonthKey(dateStr: string): string {
   const key = toDateKey(dateStr);
   return key.slice(0, 7);
+}
+
+function buildBreakdown(entries: ContributionEntry[]): DailyHeatmapBreakdown {
+  return entries.reduce<DailyHeatmapBreakdown>(
+    (acc, entry) => {
+      acc[entry.kind] += 1;
+      return acc;
+    },
+    { daily: 0, writing: 0, artikel: 0 }
+  );
 }
 
 export function buildDailyActivityMap(notes: DailyNote[]) {
@@ -156,6 +184,49 @@ export function buildDailyHeatmap(
   notes: DailyNote[],
   config: { days?: number; referenceDate?: Date } = {}
 ): DailyHeatmapCell[] {
+  const entries: ContributionEntry[] = notes.map((note) => ({
+    id: `daily:${note.slug}`,
+    title: note.title,
+    date: note.date,
+    url: `/daily/${note.slug}`,
+    kind: "daily",
+  }));
+
+  return buildContributionHeatmap(entries, config);
+}
+
+export function buildContributionEntries(
+  notes: DailyNote[],
+  posts: Post[]
+): ContributionEntry[] {
+  const dailyEntries: ContributionEntry[] = notes.map((note) => ({
+    id: `daily:${note.slug}`,
+    title: note.title,
+    date: note.date,
+    url: `/daily/${note.slug}`,
+    kind: "daily",
+  }));
+
+  const postEntries: ContributionEntry[] = posts.map((post) => {
+    const isArticle = post.type === "article";
+    return {
+      id: `post:${post.slug}`,
+      title: post.title,
+      date: post.date,
+      url: isArticle ? `/artikel/${post.slug}` : `/writing/${post.slug}`,
+      kind: isArticle ? "artikel" : "writing",
+    };
+  });
+
+  return [...dailyEntries, ...postEntries].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+}
+
+export function buildContributionHeatmap(
+  entries: ContributionEntry[],
+  config: { days?: number; referenceDate?: Date } = {}
+): DailyHeatmapCell[] {
   const days = config.days ?? 90;
   const referenceDate = config.referenceDate ?? new Date();
   const todayKey = toDateKey(referenceDate);
@@ -163,13 +234,21 @@ export function buildDailyHeatmap(
   start.setDate(start.getDate() - (days - 1));
   const startKey = toDateKey(start);
 
-  const activityMap = buildDailyActivityMap(notes);
-  const maxCount = Math.max(1, ...activityMap.values());
+  const entriesByDate = new Map<string, ContributionEntry[]>();
+  entries.forEach((entry) => {
+    const key = toDateKey(entry.date);
+    const list = entriesByDate.get(key) ?? [];
+    list.push(entry);
+    entriesByDate.set(key, list);
+  });
+
+  const maxCount = Math.max(1, ...[...entriesByDate.values()].map((list) => list.length));
   const cells: DailyHeatmapCell[] = [];
 
   let cursorKey = startKey;
   for (let i = 0; i < days; i++) {
-    const count = activityMap.get(cursorKey) ?? 0;
+    const dayEntries = entriesByDate.get(cursorKey) ?? [];
+    const count = dayEntries.length;
     const intensity =
       count === 0 ? 0 : (Math.min(4, Math.max(1, Math.ceil((count / maxCount) * 4))) as 1 | 2 | 3 | 4);
     cells.push({
@@ -177,6 +256,8 @@ export function buildDailyHeatmap(
       count,
       intensity,
       isToday: cursorKey === todayKey,
+      entries: dayEntries,
+      breakdown: buildBreakdown(dayEntries),
     });
     cursorKey = shiftDateKey(cursorKey, 1);
   }

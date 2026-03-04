@@ -1,10 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
-import { dailyNotes } from "@/data/posts";
+import { dailyNotes, posts } from "@/data/posts";
 import { CalendarDays, NotebookPen, Hash, Flame, ArrowUpRight } from "lucide-react";
 import FilterChips from "@/components/FilterChips";
 import {
-  buildDailyHeatmap,
+  buildContributionEntries,
+  buildContributionHeatmap,
   filterDailyNotes,
   findClosestDailyNote,
   getDailyMonthOptions,
@@ -25,9 +26,31 @@ export default function Daily() {
   const [monthFilter, setMonthFilter] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [jumpDate, setJumpDate] = useState("");
+  const [selectedHeatDate, setSelectedHeatDate] = useState<string | null>(null);
 
   const currentYear = new Date().getFullYear();
   const streak = useMemo(() => getDailyStreakStats(dailyNotes), []);
+  const contributionEntries = useMemo(() => buildContributionEntries(dailyNotes, posts), []);
+  const heatmap = useMemo(() => buildContributionHeatmap(contributionEntries, { days: 112 }), [contributionEntries]);
+  const monthMarkers = useMemo(() => {
+    const seen = new Set<string>();
+    return heatmap.flatMap((cell, index) => {
+      const monthKey = cell.date.slice(0, 7);
+      if (seen.has(monthKey)) return [];
+      seen.add(monthKey);
+      return [
+        {
+          weekIndex: Math.floor(index / 7),
+          label: new Date(`${monthKey}-01T00:00:00`).toLocaleDateString("id-ID", { month: "short" }),
+          monthKey,
+        },
+      ];
+    });
+  }, [heatmap]);
+  const selectedHeatCell = useMemo(
+    () => heatmap.find((cell) => cell.date === selectedHeatDate) ?? null,
+    [heatmap, selectedHeatDate]
+  );
   const monthOptions = useMemo(() => getDailyMonthOptions(dailyNotes), []);
   const allTags = useMemo(
     () => [...new Set(dailyNotes.flatMap((note) => note.tags))].sort((a, b) => a.localeCompare(b)),
@@ -37,7 +60,6 @@ export default function Daily() {
     () => filterDailyNotes(dailyNotes, { month: monthFilter, tag: tagFilter }),
     [monthFilter, tagFilter]
   );
-  const heatmap = useMemo(() => buildDailyHeatmap(dailyNotes, { days: 112 }), []);
   const jumpTarget = useMemo(
     () => (jumpDate ? findClosestDailyNote(dailyNotes, jumpDate) : null),
     [jumpDate]
@@ -113,11 +135,23 @@ export default function Daily() {
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-heading text-xl font-semibold">Aktivitas 16 Minggu</h2>
           <span className="text-xs text-muted-foreground/65">
-            Hari aktif: {streak.activeDays}
+            Hari aktif: {heatmap.filter((cell) => cell.count > 0).length}
           </span>
         </div>
         <div className="overflow-x-auto pb-1">
-          <div className="grid grid-flow-col auto-cols-[12px] grid-rows-7 gap-1 w-max">
+          <div className="w-max">
+            <div className="relative mb-2 h-4" style={{ width: `${Math.ceil(heatmap.length / 7) * 16}px` }}>
+              {monthMarkers.map((marker) => (
+                <span
+                  key={marker.monthKey}
+                  className="absolute top-0 text-[10px] text-muted-foreground/70"
+                  style={{ left: `${marker.weekIndex * 16}px` }}
+                >
+                  {marker.label}
+                </span>
+              ))}
+            </div>
+            <div className="grid grid-flow-col auto-cols-[12px] grid-rows-7 gap-1 w-max">
             {heatmap.map((cell) => {
               const intensityClass = {
                 0: "bg-secondary/45",
@@ -126,19 +160,33 @@ export default function Daily() {
                 3: "bg-accent/55",
                 4: "bg-highlight/65",
               }[cell.intensity];
+              const tooltipParts = [
+                cell.date,
+                `${cell.count} kontribusi`,
+                cell.breakdown.daily > 0 ? `Daily ${cell.breakdown.daily}` : "",
+                cell.breakdown.writing > 0 ? `Writing ${cell.breakdown.writing}` : "",
+                cell.breakdown.artikel > 0 ? `Artikel ${cell.breakdown.artikel}` : "",
+              ].filter(Boolean);
 
               return (
-                <div
+                <button
+                  type="button"
                   key={cell.date}
-                  title={`${cell.date} • ${cell.count} catatan`}
+                  title={tooltipParts.join(" • ")}
+                  aria-label={`Aktivitas ${cell.date}`}
+                  onClick={() =>
+                    setSelectedHeatDate((current) => (current === cell.date ? null : cell.date))
+                  }
                   className={cn(
                     "h-3 w-3 rounded-[3px] border border-border/20",
                     intensityClass,
-                    cell.isToday && "ring-1 ring-primary/90"
+                    cell.isToday && "ring-1 ring-primary/90",
+                    selectedHeatDate === cell.date && "ring-2 ring-accent/90"
                   )}
                 />
               );
             })}
+            </div>
           </div>
         </div>
         <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground/65">
@@ -150,6 +198,52 @@ export default function Daily() {
           <div className="h-2.5 w-2.5 rounded-[3px] bg-highlight/65 border border-border/20" />
           <span>Tinggi</span>
         </div>
+
+        {selectedHeatCell && (
+          <div className="mt-4 rounded-xl border border-border/40 bg-secondary/25 p-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-heading text-sm font-semibold">
+                Aktivitas {formatDailyDate(selectedHeatCell.date)}
+              </h3>
+              <span className="text-xs text-muted-foreground/70">
+                {selectedHeatCell.count} kontribusi
+              </span>
+            </div>
+            {selectedHeatCell.entries.length === 0 ? (
+              <p className="text-xs text-muted-foreground/70">Tidak ada publikasi pada tanggal ini.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {selectedHeatCell.entries.map((entry) => {
+                  const sourceStyle = {
+                    daily: "bg-primary/15 text-primary",
+                    writing: "bg-accent/15 text-accent",
+                    artikel: "bg-highlight/15 text-highlight",
+                  }[entry.kind];
+                  const sourceLabel = {
+                    daily: "Daily",
+                    writing: "Writing",
+                    artikel: "Artikel",
+                  }[entry.kind];
+
+                  return (
+                    <Link
+                      key={entry.id}
+                      to={entry.url}
+                      className="group flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-secondary/45 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm group-hover:text-foreground">{entry.title}</p>
+                      </div>
+                      <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", sourceStyle)}>
+                        {sourceLabel}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="mb-8 space-y-4">
