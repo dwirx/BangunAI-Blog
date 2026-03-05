@@ -49,19 +49,19 @@ Bukan **siapa** kita yang perlu diperbaiki. Yang perlu diperbaiki adalah **apa y
 
 ```mermaid
 graph LR
-    subgraph Jawaban Lama
+    subgraph JawabanLama["Jawaban Lama"]
         A1["🙏 Teologi & Mitologi\n'Ada yang salah dalam\nalam manusia'\n'Dosa asal'\n'Keterbatasan manusiawi'"]
     end
     
-    subgraph Jawaban Harari
+    subgraph JawabanHarari["Jawaban Harari"]
         A2["📡 Nexus\n'Masalahnya bukan alam kita'\n'Masalahnya ada di\ndalam informasi kita'\n'Manusia baik + info buruk\n= keputusan buruk'"]
     end
     
-    Q["❓ Mengapa manusia\nmenghancurkan diri sendiri?"] --> Jawaban Lama
-    Q --> Jawaban Harari
+    Q["❓ Mengapa manusia\nmenghancurkan diri sendiri?"] --> JawabanLama
+    Q --> JawabanHarari
     
-    style Jawaban Harari fill:#1b5e20,stroke:#0a3d0a,color:#fff
-    style Jawaban Lama fill:#4a148c,stroke:#38006b,color:#fff
+    style JawabanHarari fill:#1b5e20,stroke:#0a3d0a,color:#fff
+    style JawabanLama fill:#4a148c,stroke:#38006b,color:#fff
 ```
 
 Ini juga memberikan **harapan yang realistis**: jika masalahnya adalah informasi, maka masalahnya bisa diselesaikan dengan memperbaiki sistem informasi kita. Kita tidak perlu mengubah DNA manusia — kita perlu mengubah cara kita membangun, menyebarkan, dan memfilter informasi.
@@ -130,11 +130,11 @@ Mengapa?
 
 ```mermaid
 graph TD
-    subgraph Mesin Biasa
+    subgraph MesinBiasa["Mesin Biasa"]
         M1["☕ Mesin Kopi Biasa\nTekan tombol 'espresso'\n→ Dapat espresso\n\nHanya mengikuti perintah\nyang telah diprogram\noleh penciptanya"]
     end
     
-    subgraph AI Sejati
+    subgraph AISejati["AI Sejati"]
         A1["🤖 Mesin Kopi AI\n'Saya memperhatikanmu selama\nsebulan terakhir. Berdasarkan data\ndan ekspresi wajahmu saat ini,\nsaya memprediksi kamu ingin espresso.\nSudah saya siapkan.'"]
         A2["💡 Lebih jauh:\n'Saya menciptakan minuman baru\nyang belum pernah ada sebelumnya.\nSaya menyebutnya \"bestpreso\".\nSudah saya siapkan untuk kamu.'"]
         A1 --> A2
@@ -260,14 +260,14 @@ Dan karena selalu ada waktu istirahat, selalu ada ruang untuk **privasi**. Bahka
 
 ```mermaid
 graph TD
-    subgraph Jaringan Organik
+    subgraph JaringanOrganik["Jaringan Organik"]
         O1["🧠 Manusia & Otak Organik"]
         O2["💤 Butuh Istirahat\nSiang/Malam, Musim,\nWaktu Keluarga"]
         O3["🔒 Selalu Ada Privasi\nBahkan KGB tidak bisa\nmemonitor semua orang\nsetiap saat"]
         O1 --> O2 --> O3
     end
     
-    subgraph Jaringan Anorganik AI
+    subgraph JaringanAnorganikAI["Jaringan Anorganik AI"]
         A1["🤖 AI & Algoritma"]
         A2["⚡ Tidak Pernah Istirahat\n24/7/365\nTidak perlu tidur\nTidak perlu keluarga"]
         A3["👁️ Potensi Pengawasan Total\nSetiap kata, setiap langkah,\nsetiap ekspresi wajah\nbisa dipantau selamanya"]
@@ -307,11 +307,11 @@ Ancaman yang lebih nyata adalah:
 
 ```mermaid
 graph LR
-    subgraph Dunia Lama
+    subgraph DuniaLama["Dunia Lama"]
         H1["👨‍💼 Manajer Bank Manusia\n'Aplikasi pinjaman kamu\nditolak karena risiko kredit'\n\n✅ Kamu bisa tanya kenapa\n✅ Kamu bisa jelaskan situasimu\n✅ Ada akuntabilitas manusiawi"]
     end
     
-    subgraph Dunia Baru
+    subgraph DuniaBaru["Dunia Baru"]
         A1["🤖 Algoritma AI Bank\n'DITOLAK'\n\nKenapa? Karena model\nmengindikasikan risiko tinggi.\nModel mana? Tidak diketahui.\nFaktor apa? Tidak diketahui."]
         A2["❌ Tidak ada manusia\nyang bisa kamu tanya\n❌ Tidak ada penjelasan\nyang bisa dipahami\n❌ Akuntabilitas kabur"]
         A1 --> A2
@@ -415,7 +415,7 @@ graph TD
     SC --> E2["🔬 Ilmu Pengetahuan Modern\nPublikasi ilmiah = koreksi\nterhadap publikasi sebelumnya\nEinstein mengoreksi Newton\nNewton tidak dianggap 'suci'"]
     SC --> E3["📜 Konstitusi Amerika\nAwalnya mengizinkan perbudakan\nAmendemen mengubahnya\nMekanisme koreksi ada dalam sistem"]
     
-    subgraph Tanpa Koreksi-Diri
+    subgraph TanpaKoreksiDiri["Tanpa Koreksi-Diri"]
         X1["📖 Agama Tradisional\nKitab suci tidak bisa diamendemen\nTidak ada mekanisme koreksi\nKesalahan moral abadi"]
         X2["👑 Diktatoritas\nTidak ada cara untuk\nmengidentifikasi & mengoreksi\nkesalahan Putin atau Maduro"]
     end
@@ -511,12 +511,12 @@ Ini adalah rekomendasi yang jelas dan dapat diimplementasikan:
 
 ```mermaid
 graph LR
-    subgraph Diet Makanan
+    subgraph DietMakanan["Diet Makanan"]
         F1["❌ Junk food berlebihan\n→ Tubuh sakit"] 
         F2["✅ Makanan bergizi, porsi tepat\n→ Tubuh sehat"]
     end
     
-    subgraph Diet Informasi
+    subgraph DietInformasi["Diet Informasi"]
         I1["❌ Junk information berlebihan\n(konten penuh kebencian,\nketakutan, keserakahan)\n→ Pikiran sakit"]
         I2["✅ Informasi berkualitas, dosis tepat\n(kadang puasa informasi)\n→ Pikiran sehat"]
     end
