@@ -36,6 +36,7 @@ function collectCssFillMap(doc: Document) {
     const cssText = styleEl.textContent ?? "";
     addMatches(cssText, /\.([a-zA-Z_][\w-]*)\s*>\s*\*\s*\{[^}]*?\bfill:\s*([^;!}]+)/g);
     addMatches(cssText, /\.([a-zA-Z_][\w-]*)\s*\{[^}]*?\bfill:\s*([^;!}]+)/g);
+    addMatches(cssText, /\.([a-zA-Z_][\w-]*)[^{]*\{[^}]*?\bfill:\s*([^;!}]+)/g);
   });
 
   return map;
@@ -250,6 +251,10 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
         securityLevel: "loose",
         suppressErrorRendering: true,
         theme: isLight ? "default" : "dark",
+        mindmap: {
+          padding: isLight ? 22 : 24,
+          maxNodeWidth: 220,
+        },
         themeVariables: isLight
           ? {
               primaryColor: "#F5E6D3",
@@ -280,6 +285,8 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
               pie4: "#A0865E",
               pie5: "#E8C9A0",
               pie6: "#7A6548",
+              git0: "#E1D3BC",
+              gitBranchLabel0: "#1A1A2E",
             }
           : {
               primaryColor: "#D8BC8A",
@@ -313,6 +320,8 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
               pie4: "#8B7355",
               pie5: "#A0865E",
               pie6: "#7A6548",
+              git0: "#3F527F",
+              gitBranchLabel0: "#F8FAFC",
             },
         fontFamily: "Space Grotesk, Inter, sans-serif",
       });

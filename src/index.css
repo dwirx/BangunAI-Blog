@@ -458,6 +458,41 @@
   fill: hsl(231 32% 12%) !important;
 }
 
+/* Keep mindmap labels readable across varied node colors */
+.dark .mermaid-container svg .mindmap-node text,
+.dark .mermaid-container svg .mindmap-node .mindmap-node-label,
+.dark .mermaid-container svg .mindmap-node foreignObject,
+.dark .mermaid-container svg .mindmap-node foreignObject div,
+.dark .mermaid-container svg .mindmap-node foreignObject span {
+  fill: hsl(42 40% 95%) !important;
+  color: hsl(42 40% 95%) !important;
+  -webkit-text-fill-color: hsl(42 40% 95%) !important;
+  font-weight: 700 !important;
+}
+
+.dark .mermaid-container svg .mindmap-node text {
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 0.95px;
+}
+
+.light .mermaid-container svg .mindmap-node text,
+.light .mermaid-container svg .mindmap-node .mindmap-node-label,
+.light .mermaid-container svg .mindmap-node foreignObject,
+.light .mermaid-container svg .mindmap-node foreignObject div,
+.light .mermaid-container svg .mindmap-node foreignObject span {
+  fill: hsl(240 20% 14%) !important;
+  color: hsl(240 20% 14%) !important;
+  -webkit-text-fill-color: hsl(240 20% 14%) !important;
+  font-weight: 700 !important;
+}
+
+.light .mermaid-container svg .mindmap-node text {
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.38);
+  stroke-width: 0.9px;
+}
+
 /* Theme transition — only on key elements, not * */
 body,
 nav,
