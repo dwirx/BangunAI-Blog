@@ -44,6 +44,7 @@ interface IndexedPost {
   category: IndexedField;
   content: IndexedField;
   tags: IndexedField[];
+  searchWords: string[];
   dateTimestamp: number;
 }
 
@@ -55,6 +56,7 @@ interface IndexedReadItem {
   slug: IndexedField;
   content: IndexedField;
   tags: IndexedField[];
+  searchWords: string[];
   dateTimestamp: number;
 }
 
@@ -65,6 +67,7 @@ interface IndexedDailyNote {
   slug: IndexedField;
   content: IndexedField;
   tags: IndexedField[];
+  searchWords: string[];
   dateTimestamp: number;
 }
 
@@ -101,6 +104,9 @@ let cachedPostsRef: Post[] | null = null;
 let cachedReadItemsRef: ReadItem[] | null = null;
 let cachedDailyNotesRef: DailyNote[] | null = null;
 const queryResultsCache = new Map<string, SearchResult[]>();
+const querySuggestionCache = new Map<string, string | null>();
+let cachedVocabulary: string[] = [];
+let cachedVocabularySet = new Set<string>();
 
 function normalizeText(value: unknown) {
   return String(value ?? "")
@@ -142,6 +148,12 @@ function indexField(value: unknown): IndexedField {
     text,
     words: splitWords(text),
   };
+}
+
+function collectSearchWords(fields: IndexedField[], tags: IndexedField[] = []) {
+  return Array.from(
+    new Set([...fields.flatMap((field) => field.words), ...tags.flatMap((tag) => tag.words)])
+  );
 }
 
 function extractSearchBody(entity: SearchableEntity) {
@@ -294,6 +306,90 @@ function hasFuzzyTokenMatch(token: string, words: string[]) {
   });
 }
 
+function tokenMatchesWords(token: string, words: string[]) {
+  if (token.length < 2) return false;
+  if (words.includes(token)) return true;
+  if (token.length >= 3 && words.some((word) => word.startsWith(token))) return true;
+  if (token.length >= 4 && hasFuzzyTokenMatch(token, words)) return true;
+  return false;
+}
+
+function countMatchedTokens(queryTokens: string[], words: string[]) {
+  let count = 0;
+  for (const token of Array.from(new Set(queryTokens))) {
+    if (tokenMatchesWords(token, words)) count += 1;
+  }
+  return count;
+}
+
+function minimumTokenCoverage(totalTokens: number) {
+  if (totalTokens <= 1) return totalTokens;
+  if (totalTokens === 2) return 1;
+  if (totalTokens === 3) return 2;
+  return Math.max(2, Math.ceil(totalTokens * 0.5));
+}
+
+function coverageBoostScore(matchedTokens: number, totalTokens: number) {
+  if (totalTokens <= 0) return 0;
+  return (matchedTokens / totalTokens) * 18;
+}
+
+function boundedLevenshteinDistance(a: string, b: string, maxDistance: number) {
+  if (a === b) return 0;
+  if (Math.abs(a.length - b.length) > maxDistance) return maxDistance + 1;
+
+  const previousRow = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i += 1) {
+    let currentRowMin = i;
+    let left = i;
+    let diagonal = i - 1;
+
+    for (let j = 1; j <= b.length; j += 1) {
+      const up = previousRow[j];
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      const next = Math.min(
+        up + 1,
+        left + 1,
+        diagonal + cost,
+      );
+
+      diagonal = up;
+      previousRow[j] = left = next;
+      if (next < currentRowMin) currentRowMin = next;
+    }
+
+    if (currentRowMin > maxDistance) return maxDistance + 1;
+  }
+
+  return previousRow[b.length];
+}
+
+function suggestClosestToken(token: string, vocabulary: string[]) {
+  if (token.length < 4 || STOP_WORDS.has(token)) return null;
+
+  let bestWord: string | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const candidate of vocabulary) {
+    if (candidate.length < 3) continue;
+    if (candidate[0] !== token[0]) continue;
+    if (Math.abs(candidate.length - token.length) > 2) continue;
+
+    const distance = boundedLevenshteinDistance(token, candidate, 2);
+    if (distance > 2) continue;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestWord = candidate;
+      continue;
+    }
+
+    if (distance === bestDistance && bestWord && candidate.length < bestWord.length) {
+      bestWord = candidate;
+    }
+  }
+
+  return bestWord;
+}
+
 function scoreIndexedField(field: IndexedField, normalizedQuery: string, queryTokens: string[], weights: MatchWeights) {
   if (!field.text) return 0;
 
@@ -354,16 +450,26 @@ function getPostIndex(posts: Post[]) {
   const cached = postIndexCache.get(posts);
   if (cached) return cached;
 
-  const index = posts.map((post) => ({
-    post,
-    title: indexField(post.title),
-    summary: indexField(post.summary),
-    slug: indexField(post.slug),
-    category: indexField(post.category),
-    content: indexField(extractSearchBody(post as Post & SearchableEntity)),
-    tags: post.tags.map((tag) => indexField(tag)),
-    dateTimestamp: parseDate(post.date),
-  }));
+  const index = posts.map((post) => {
+    const title = indexField(post.title);
+    const summary = indexField(post.summary);
+    const slug = indexField(post.slug);
+    const category = indexField(post.category);
+    const content = indexField(extractSearchBody(post as Post & SearchableEntity));
+    const tags = post.tags.map((tag) => indexField(tag));
+
+    return {
+      post,
+      title,
+      summary,
+      slug,
+      category,
+      content,
+      tags,
+      searchWords: collectSearchWords([title, summary, slug, category, content], tags),
+      dateTimestamp: parseDate(post.date),
+    };
+  });
 
   postIndexCache.set(posts, index);
   return index;
@@ -373,16 +479,26 @@ function getReadIndex(readItems: ReadItem[]) {
   const cached = readIndexCache.get(readItems);
   if (cached) return cached;
 
-  const index = readItems.map((item) => ({
-    item,
-    title: indexField(item.title),
-    snippet: indexField(item.snippet),
-    source: indexField(item.source),
-    slug: indexField(item.slug),
-    content: indexField(extractSearchBody(item as ReadItem & SearchableEntity)),
-    tags: item.tags.map((tag) => indexField(tag)),
-    dateTimestamp: parseDate(item.date),
-  }));
+  const index = readItems.map((item) => {
+    const title = indexField(item.title);
+    const snippet = indexField(item.snippet);
+    const source = indexField(item.source);
+    const slug = indexField(item.slug);
+    const content = indexField(extractSearchBody(item as ReadItem & SearchableEntity));
+    const tags = item.tags.map((tag) => indexField(tag));
+
+    return {
+      item,
+      title,
+      snippet,
+      source,
+      slug,
+      content,
+      tags,
+      searchWords: collectSearchWords([title, snippet, source, slug, content], tags),
+      dateTimestamp: parseDate(item.date),
+    };
+  });
 
   readIndexCache.set(readItems, index);
   return index;
@@ -392,18 +508,68 @@ function getDailyIndex(dailyNotes: DailyNote[]) {
   const cached = dailyIndexCache.get(dailyNotes);
   if (cached) return cached;
 
-  const index = dailyNotes.map((note) => ({
-    note,
-    title: indexField(note.title),
-    summary: indexField(note.summary),
-    slug: indexField(note.slug),
-    content: indexField(extractSearchBody(note as DailyNote & SearchableEntity)),
-    tags: note.tags.map((tag) => indexField(tag)),
-    dateTimestamp: parseDate(note.date),
-  }));
+  const index = dailyNotes.map((note) => {
+    const title = indexField(note.title);
+    const summary = indexField(note.summary);
+    const slug = indexField(note.slug);
+    const content = indexField(extractSearchBody(note as DailyNote & SearchableEntity));
+    const tags = note.tags.map((tag) => indexField(tag));
+
+    return {
+      note,
+      title,
+      summary,
+      slug,
+      content,
+      tags,
+      searchWords: collectSearchWords([title, summary, slug, content], tags),
+      dateTimestamp: parseDate(note.date),
+    };
+  });
 
   dailyIndexCache.set(dailyNotes, index);
   return index;
+}
+
+function getVocabulary(input: SearchContentInput) {
+  if (cachedPostsRef === input.posts && cachedReadItemsRef === input.readItems && cachedDailyNotesRef === input.dailyNotes && cachedVocabulary.length > 0) {
+    return cachedVocabulary;
+  }
+
+  const words = new Set<string>();
+
+  for (const indexedPost of getPostIndex(input.posts)) {
+    for (const word of indexedPost.title.words) words.add(word);
+    for (const word of indexedPost.slug.words) words.add(word);
+    for (const word of indexedPost.category.words) words.add(word);
+    for (const tag of indexedPost.tags) {
+      for (const word of tag.words) words.add(word);
+    }
+  }
+
+  for (const indexedReadItem of getReadIndex(input.readItems)) {
+    for (const word of indexedReadItem.title.words) words.add(word);
+    for (const word of indexedReadItem.slug.words) words.add(word);
+    for (const word of indexedReadItem.source.words) words.add(word);
+    for (const tag of indexedReadItem.tags) {
+      for (const word of tag.words) words.add(word);
+    }
+  }
+
+  for (const indexedDailyNote of getDailyIndex(input.dailyNotes)) {
+    for (const word of indexedDailyNote.title.words) words.add(word);
+    for (const word of indexedDailyNote.slug.words) words.add(word);
+    for (const tag of indexedDailyNote.tags) {
+      for (const word of tag.words) words.add(word);
+    }
+  }
+
+  cachedVocabulary = Array.from(words).sort((a, b) => a.localeCompare(b));
+  cachedVocabularySet = new Set(cachedVocabulary);
+  cachedPostsRef = input.posts;
+  cachedReadItemsRef = input.readItems;
+  cachedDailyNotesRef = input.dailyNotes;
+  return cachedVocabulary;
 }
 
 function tagsContainAllTerms(tags: IndexedField[], terms: string[]) {
@@ -430,6 +596,79 @@ function resetQueryCacheIfNeeded(input: SearchContentInput) {
   cachedReadItemsRef = input.readItems;
   cachedDailyNotesRef = input.dailyNotes;
   queryResultsCache.clear();
+  querySuggestionCache.clear();
+  cachedVocabulary = [];
+  cachedVocabularySet = new Set();
+}
+
+function correctFreeTextToken(part: string, vocabulary: string[]) {
+  const normalized = normalizeText(part);
+  if (!normalized || normalized.length < 4) return null;
+  if (STOP_WORDS.has(normalized)) return null;
+  if (cachedVocabularySet.has(normalized)) return null;
+
+  const suggestion = suggestClosestToken(normalized, vocabulary);
+  if (!suggestion || suggestion === normalized) return null;
+  return suggestion;
+}
+
+function correctOperatorToken(part: string, vocabulary: string[]) {
+  const filterMatch = part.match(/^([a-z]+):(.*)$/i);
+  if (!filterMatch) return null;
+
+  const key = filterMatch[1].toLowerCase();
+  const rawValue = filterMatch[2];
+  if (!rawValue) return null;
+
+  if (!["source", "src", "tag", "tags", "category", "cat"].includes(key)) return null;
+
+  const normalizedValue = normalizeText(rawValue);
+  if (!normalizedValue || normalizedValue.length < 3) return null;
+  if (cachedVocabularySet.has(normalizedValue)) return null;
+
+  const suggestion = suggestClosestToken(normalizedValue, vocabulary);
+  if (!suggestion || suggestion === normalizedValue) return null;
+  return `${key}:${suggestion}`;
+}
+
+export function getSearchSuggestion(query: string, input: SearchContentInput) {
+  const trimmed = query.trim();
+  if (!trimmed) return null;
+
+  resetQueryCacheIfNeeded(input);
+  const cacheKey = trimmed.toLowerCase();
+  if (querySuggestionCache.has(cacheKey)) {
+    return querySuggestionCache.get(cacheKey) ?? null;
+  }
+
+  if (searchContent(trimmed, input).length > 0) {
+    querySuggestionCache.set(cacheKey, null);
+    return null;
+  }
+
+  const vocabulary = getVocabulary(input);
+  if (vocabulary.length === 0) {
+    querySuggestionCache.set(cacheKey, null);
+    return null;
+  }
+
+  const correctedParts = trimmed.split(/\s+/).map((part) => {
+    return correctOperatorToken(part, vocabulary) ?? correctFreeTextToken(part, vocabulary) ?? part;
+  });
+
+  const correctedQuery = correctedParts.join(" ").replace(/\s+/g, " ").trim();
+  if (!correctedQuery || correctedQuery.toLowerCase() === trimmed.toLowerCase()) {
+    querySuggestionCache.set(cacheKey, null);
+    return null;
+  }
+
+  if (searchContent(correctedQuery, input).length === 0) {
+    querySuggestionCache.set(cacheKey, null);
+    return null;
+  }
+
+  querySuggestionCache.set(cacheKey, correctedQuery);
+  return correctedQuery;
 }
 
 export function searchContent(query: string, input: SearchContentInput): SearchResult[] {
@@ -446,7 +685,7 @@ export function searchContent(query: string, input: SearchContentInput): SearchR
   const nowTimestamp = Date.now();
 
   const postResults = getPostIndex(input.posts)
-    .map(({ post, title, summary, slug, category, content, tags, dateTimestamp }): SearchResult | null => {
+    .map(({ post, title, summary, slug, category, content, tags, searchWords, dateTimestamp }): SearchResult | null => {
       if (parsed.filters.resultTypes.size > 0 && !parsed.filters.resultTypes.has("post")) return null;
       if (parsed.filters.postTypes.size > 0 && !parsed.filters.postTypes.has(post.type)) return null;
       if (parsed.filters.sources.length > 0) return null;
@@ -500,8 +739,11 @@ export function searchContent(query: string, input: SearchContentInput): SearchR
         fuzzyToken: 2,
       });
       const lexicalScore = titleScore + summaryScore + slugScore + categoryScore + tagScore + contentScore;
+      const matchedTokenCount = countMatchedTokens(parsed.queryTokens, searchWords);
+      const totalQueryTokens = parsed.queryTokens.length;
 
       if (parsed.hasTextQuery && lexicalScore <= 0) return null;
+      if (parsed.hasTextQuery && totalQueryTokens > 0 && matchedTokenCount < minimumTokenCoverage(totalQueryTokens)) return null;
 
       return {
         type: "post",
@@ -511,14 +753,17 @@ export function searchContent(query: string, input: SearchContentInput): SearchR
         url: post.type === "article" ? `/artikel/${post.slug}` : `/writing/${post.slug}`,
         postType: post.type,
         navigateInternal: true,
-        score: (parsed.hasTextQuery ? lexicalScore : 1) + recencyBoost(dateTimestamp, nowTimestamp) + 6,
+        score:
+          (parsed.hasTextQuery ? lexicalScore + coverageBoostScore(matchedTokenCount, totalQueryTokens) : 1) +
+          recencyBoost(dateTimestamp, nowTimestamp) +
+          6,
         date: post.date,
       };
     })
     .filter((item): item is SearchResult => item !== null);
 
   const dailyResults = getDailyIndex(input.dailyNotes)
-    .map(({ note, title, summary, slug, content, tags, dateTimestamp }): SearchResult | null => {
+    .map(({ note, title, summary, slug, content, tags, searchWords, dateTimestamp }): SearchResult | null => {
       if (parsed.filters.resultTypes.size > 0 && !parsed.filters.resultTypes.has("daily")) return null;
       if (parsed.filters.postTypes.size > 0) return null;
       if (parsed.filters.categories.length > 0) return null;
@@ -563,8 +808,11 @@ export function searchContent(query: string, input: SearchContentInput): SearchR
         fuzzyToken: 2,
       });
       const lexicalScore = titleScore + summaryScore + slugScore + tagScore + contentScore;
+      const matchedTokenCount = countMatchedTokens(parsed.queryTokens, searchWords);
+      const totalQueryTokens = parsed.queryTokens.length;
 
       if (parsed.hasTextQuery && lexicalScore <= 0) return null;
+      if (parsed.hasTextQuery && totalQueryTokens > 0 && matchedTokenCount < minimumTokenCoverage(totalQueryTokens)) return null;
 
       return {
         type: "daily",
@@ -573,14 +821,17 @@ export function searchContent(query: string, input: SearchContentInput): SearchR
         preview: pickPreviewText(contentScore > summaryScore ? content : summary, summary),
         url: `/daily/${note.slug}`,
         navigateInternal: true,
-        score: (parsed.hasTextQuery ? lexicalScore : 1) + recencyBoost(dateTimestamp, nowTimestamp) + 3,
+        score:
+          (parsed.hasTextQuery ? lexicalScore + coverageBoostScore(matchedTokenCount, totalQueryTokens) : 1) +
+          recencyBoost(dateTimestamp, nowTimestamp) +
+          3,
         date: note.date,
       };
     })
     .filter((item): item is SearchResult => item !== null);
 
   const readResults = getReadIndex(input.readItems)
-    .map(({ item, title, snippet, source, slug, content, tags, dateTimestamp }): SearchResult | null => {
+    .map(({ item, title, snippet, source, slug, content, tags, searchWords, dateTimestamp }): SearchResult | null => {
       if (parsed.filters.resultTypes.size > 0 && !parsed.filters.resultTypes.has("read")) return null;
       if (parsed.filters.postTypes.size > 0) return null;
       if (parsed.filters.categories.length > 0) return null;
@@ -634,8 +885,11 @@ export function searchContent(query: string, input: SearchContentInput): SearchR
         fuzzyToken: 2,
       });
       const lexicalScore = titleScore + snippetScore + sourceScore + slugScore + tagScore + contentScore;
+      const matchedTokenCount = countMatchedTokens(parsed.queryTokens, searchWords);
+      const totalQueryTokens = parsed.queryTokens.length;
 
       if (parsed.hasTextQuery && lexicalScore <= 0) return null;
+      if (parsed.hasTextQuery && totalQueryTokens > 0 && matchedTokenCount < minimumTokenCoverage(totalQueryTokens)) return null;
 
       return {
         type: "read",
@@ -645,7 +899,10 @@ export function searchContent(query: string, input: SearchContentInput): SearchR
         url: item.hasBody ? `/read/${item.slug}` : item.url,
         source: item.source,
         navigateInternal: !!item.hasBody,
-        score: (parsed.hasTextQuery ? lexicalScore : 1) + recencyBoost(dateTimestamp, nowTimestamp) + 1,
+        score:
+          (parsed.hasTextQuery ? lexicalScore + coverageBoostScore(matchedTokenCount, totalQueryTokens) : 1) +
+          recencyBoost(dateTimestamp, nowTimestamp) +
+          1,
         date: item.date,
       };
     })

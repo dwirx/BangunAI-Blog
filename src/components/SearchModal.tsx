@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Search, FileText, BookOpen, ArrowRight, NotebookPen } from "lucide-react";
 import { posts, readItems, dailyNotes } from "@/data/posts";
 import TypeBadge from "@/components/TypeBadge";
-import { searchContent, type SearchResult } from "@/lib/search";
+import { getSearchSuggestion, searchContent, type SearchResult } from "@/lib/search";
 import { splitHighlightSegments } from "@/lib/search-highlight";
 import { buildSearchExcerpt } from "@/lib/search-preview";
 
 export default function SearchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [suggestion, setSuggestion] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
   const search = useCallback((q: string) => {
     if (!q.trim()) {
       setResults([]);
+      setSuggestion(null);
       return;
     }
 
@@ -27,6 +29,16 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
       limit: 12,
     });
     setResults(nextResults);
+    setSuggestion(
+      nextResults.length === 0
+        ? getSearchSuggestion(q, {
+            posts,
+            readItems,
+            dailyNotes,
+            limit: 12,
+          })
+        : null
+    );
     setSelectedIndex(0);
   }, []);
 
@@ -42,6 +54,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
     if (open) {
       setQuery("");
       setResults([]);
+      setSuggestion(null);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open]);
@@ -61,6 +74,10 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
       const r = results[selectedIndex];
       if (r.navigateInternal) { navigate(r.url); onClose(); }
       else window.open(r.url, "_blank");
+    }
+    if (e.key === "Enter" && results.length === 0 && suggestion) {
+      e.preventDefault();
+      setQuery(suggestion);
     }
     if (e.key === "Escape") onClose();
   };
@@ -154,7 +171,16 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
 
           {query && results.length === 0 && (
             <div className="py-10 text-center text-sm text-muted-foreground">
-              Tidak ditemukan hasil untuk "{query}"
+              <p>Tidak ditemukan hasil untuk "{query}"</p>
+              {suggestion && (
+                <button
+                  type="button"
+                  onClick={() => setQuery(suggestion)}
+                  className="mt-3 rounded-md border border-border bg-secondary/40 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                >
+                  Mungkin maksudmu: <span className="underline underline-offset-2">{suggestion}</span>
+                </button>
+              )}
             </div>
           )}
 

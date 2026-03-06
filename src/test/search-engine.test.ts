@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { searchContent } from "@/lib/search";
+import { getSearchSuggestion, searchContent } from "@/lib/search";
 import type { DailyNote, Post, ReadItem } from "@/data/types";
 
 const posts: Post[] = [
@@ -133,6 +133,21 @@ describe("searchContent", () => {
   it("builds preview from matched body content when available", () => {
     const results = searchContent("memalsukan sejarah", { posts, readItems, dailyNotes });
     expect(results[0]?.preview.toLowerCase()).toContain("memalsukan sejarah");
+  });
+
+  it("reduces noisy partial matches for long multi-token queries", () => {
+    const results = searchContent("1984 kuantum astrofisika metabolomik", { posts, readItems, dailyNotes });
+    expect(results).toHaveLength(0);
+  });
+
+  it("provides did-you-mean suggestion for typo query", () => {
+    const suggestion = getSearchSuggestion("orgwewl", { posts, readItems, dailyNotes });
+    expect(suggestion).toBe("orwell");
+  });
+
+  it("keeps filter operators while suggesting corrected query", () => {
+    const suggestion = getSearchSuggestion("source:youutbe", { posts, readItems, dailyNotes });
+    expect(suggestion).toBe("source:youtube");
   });
 
   it("can match MDX body via Component fallback when content field is empty", () => {
