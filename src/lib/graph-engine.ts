@@ -25,8 +25,9 @@ export interface HybridGraphData {
   neighbors: Map<string, Set<string>>;
 }
 
-function normalizeText(value: string) {
-  return value.toLowerCase().trim();
+function normalizeText(value: unknown) {
+  const text = typeof value === "string" ? value : String(value ?? "");
+  return text.toLowerCase().trim();
 }
 
 function escapeRegex(value: string) {

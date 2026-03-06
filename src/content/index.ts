@@ -14,6 +14,13 @@ interface MdxModule {
   frontmatter: Record<string, unknown>;
 }
 
+function normalizeStringArray(value: unknown, fallback: string[] = []) {
+  if (!Array.isArray(value)) return [...fallback];
+  return value
+    .map((item) => String(item).trim())
+    .filter((item) => item.length > 0);
+}
+
 // Auto-import all MDX files
 const writingModules = import.meta.glob<MdxModule>("./writing/*.mdx", { eager: true });
 const articleModules = import.meta.glob<MdxModule>("./articles/*.mdx", { eager: true });
@@ -31,7 +38,7 @@ function mdxToPost(mod: MdxModule): Post & { Component: ComponentType } {
     summary: fm.summary as string,
     type: fm.type as Post["type"],
     category: fm.category as Post["category"],
-    tags: (fm.tags as string[]) || [],
+    tags: normalizeStringArray(fm.tags),
     date: fm.date as string,
     readingTime: fm.readingTime as number,
     featured: fm.featured as boolean | undefined,
@@ -49,7 +56,7 @@ function mdxToReadItem(mod: MdxModule): ReadItem & { Component: ComponentType } 
     snippet: fm.snippet as string,
     source: fm.source as string,
     url: fm.url as string,
-    tags: (fm.tags as string[]) || [],
+    tags: normalizeStringArray(fm.tags),
     date: fm.date as string,
     hasBody: hasContent,
     Component: mod.default,
@@ -72,7 +79,7 @@ function mdxToDailyNote(path: string, mod: MdxModule): DailyNote & { Component: 
     title,
     date,
     summary,
-    tags: (fm.tags as string[]) || ["daily"],
+    tags: normalizeStringArray(fm.tags, ["daily"]),
     Component: mod.default,
   };
 }
