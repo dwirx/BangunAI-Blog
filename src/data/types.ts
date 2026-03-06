@@ -23,6 +23,7 @@ export interface ReadItem {
   url: string;
   tags: string[];
   hasBody?: boolean;
+  content?: string;
 }
 
 export interface DailyNote {
@@ -31,6 +32,7 @@ export interface DailyNote {
   date: string;
   summary: string;
   tags: string[];
+  content?: string;
 }
 
 export const categories: Category[] = ["Tech", "Refleksi", "Produktivitas", "Linux", "Coding", "Life"];
