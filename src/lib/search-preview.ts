@@ -13,6 +13,7 @@ function queryTerms(query: string) {
         .split(/\s+/)
         .map((part) => part.trim())
         .filter((part) => part.length >= 2)
+        .filter((part) => !/^[a-z]+:.+$/i.test(part))
         .map(normalizeText)
     )
   ).sort((a, b) => b.length - a.length);

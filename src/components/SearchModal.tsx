@@ -86,7 +86,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
     );
   };
 
-  const resultExcerpt = (r: SearchResult) => buildSearchExcerpt(r.summary, query, 120);
+  const resultExcerpt = (r: SearchResult) => buildSearchExcerpt(r.preview || r.summary, query, 120);
 
   if (!open) return null;
 
@@ -160,7 +160,12 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
 
           {!query && (
             <div className="py-10 text-center text-sm text-muted-foreground">
-              Ketik untuk mulai mencari...
+              <p>Ketik untuk mulai mencari...</p>
+              <p className="mt-2 text-xs text-muted-foreground/80">
+                Tips: gunakan <code className="rounded bg-secondary/60 px-1 py-0.5">type:daily</code>,{" "}
+                <code className="rounded bg-secondary/60 px-1 py-0.5">tag:ai</code>,{" "}
+                <code className="rounded bg-secondary/60 px-1 py-0.5">source:youtube</code>
+              </p>
             </div>
           )}
         </div>

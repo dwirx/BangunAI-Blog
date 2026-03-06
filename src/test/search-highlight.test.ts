@@ -25,4 +25,10 @@ describe("splitHighlightSegments", () => {
     const highlighted = segments.filter((part) => part.match).map((part) => part.text);
     expect(highlighted[0]).toBe("totalitarianisme");
   });
+
+  it("ignores filter operators in query", () => {
+    const segments = splitHighlightSegments("Daily Fokus 1984", "type:daily 1984");
+    const highlighted = segments.filter((part) => part.match).map((part) => part.text);
+    expect(highlighted).toEqual(["1984"]);
+  });
 });

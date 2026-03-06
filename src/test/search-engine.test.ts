@@ -95,6 +95,46 @@ describe("searchContent", () => {
     expect(results).toHaveLength(0);
   });
 
+  it("supports query filters by type", () => {
+    const results = searchContent("type:daily 1984", { posts, readItems, dailyNotes });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((item) => item.type === "daily")).toBe(true);
+  });
+
+  it("supports filter-only query", () => {
+    const results = searchContent("type:daily", { posts, readItems, dailyNotes });
+    expect(results.length).toBe(1);
+    expect(results[0]?.type).toBe("daily");
+  });
+
+  it("supports query filters by tag and source", () => {
+    const tagResults = searchContent("tag:book orwell", { posts, readItems, dailyNotes });
+    expect(tagResults.length).toBeGreaterThan(0);
+    expect(tagResults.every((item) => item.title.toLowerCase().includes("orwell"))).toBe(true);
+
+    const sourceResults = searchContent("source:youtube review", { posts, readItems, dailyNotes });
+    expect(sourceResults.length).toBeGreaterThan(0);
+    expect(sourceResults.every((item) => item.type === "read")).toBe(true);
+    expect(sourceResults.every((item) => item.source?.toLowerCase() === "youtube")).toBe(true);
+  });
+
+  it("supports query filters by category", () => {
+    const results = searchContent("category:tech ai", { posts, readItems, dailyNotes });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((item) => item.type === "post")).toBe(true);
+    expect(results[0]?.title).toBe("Catatan AI");
+  });
+
+  it("handles minor typo in query terms", () => {
+    const results = searchContent("orwlel", { posts, readItems, dailyNotes });
+    expect(results.some((item) => item.title === "1984 George Orwell")).toBe(true);
+  });
+
+  it("builds preview from matched body content when available", () => {
+    const results = searchContent("memalsukan sejarah", { posts, readItems, dailyNotes });
+    expect(results[0]?.preview.toLowerCase()).toContain("memalsukan sejarah");
+  });
+
   it("can match MDX body via Component fallback when content field is empty", () => {
     const postWithoutContent = Object.assign(
       {

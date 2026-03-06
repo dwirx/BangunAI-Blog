@@ -18,4 +18,10 @@ describe("buildSearchExcerpt", () => {
     const excerpt = buildSearchExcerpt(text, "tidak-ada", 25);
     expect(excerpt.startsWith("Satu dua tiga")).toBe(true);
   });
+
+  it("ignores filter operators when finding excerpt focus", () => {
+    const text = "Catatan ini membahas totalitarianisme dan kebebasan berpikir.";
+    const excerpt = buildSearchExcerpt(text, "type:daily totalitarianisme", 45);
+    expect(excerpt.toLowerCase()).toContain("totalitarianisme");
+  });
 });

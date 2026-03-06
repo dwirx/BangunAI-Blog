@@ -32,7 +32,9 @@ function queryTerms(query: string) {
     .toLowerCase()
     .trim()
     .split(/\s+/)
+    .map((term) => term.trim())
     .filter((term) => term.length >= 2)
+    .filter((term) => !/^[a-z]+:.+$/i.test(term))
     .filter((term) => !STOP_WORDS.has(term));
 
   const unique = Array.from(new Set(terms));
