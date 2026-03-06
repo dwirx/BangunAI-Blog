@@ -1,28 +1,35 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ReadItem } from "@/data/types";
 import { ExternalLink } from "lucide-react";
 import { formatDateMedium } from "@/lib/date";
 
 export default function ReadItemCard({ item }: { item: ReadItem }) {
   const hasContent = !!item.hasBody;
+  const navigate = useNavigate();
 
-  const CardWrapper = ({ children }: { children: React.ReactNode }) => {
+  const handleCardActivate = () => {
     if (hasContent) {
-      return (
-        <Link to={`/read/${item.slug}`} className="glass-card group block transition-all hover:bg-[hsl(var(--glass-bg-hover))]">
-          {children}
-        </Link>
-      );
+      navigate(`/read/${item.slug}`);
     }
-    return (
-      <div className="glass-card group transition-all hover:bg-[hsl(var(--glass-bg-hover))]">
-        {children}
-      </div>
-    );
+  };
+
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!hasContent) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      navigate(`/read/${item.slug}`);
+    }
   };
 
   return (
-    <CardWrapper>
+    <div
+      className={`glass-card group transition-all hover:bg-[hsl(var(--glass-bg-hover))] ${hasContent ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : ""}`}
+      role={hasContent ? "link" : undefined}
+      tabIndex={hasContent ? 0 : undefined}
+      aria-label={hasContent ? `Buka catatan ${item.title}` : undefined}
+      onClick={hasContent ? handleCardActivate : undefined}
+      onKeyDown={hasContent ? handleCardKeyDown : undefined}
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <h3 className="font-heading text-base font-semibold mb-1 group-hover:text-accent transition-colors">
@@ -45,6 +52,7 @@ export default function ReadItemCard({ item }: { item: ReadItem }) {
           href={item.url}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={`Buka sumber eksternal ${item.title}`}
           className="flex-shrink-0 p-2.5 rounded-xl glass glass-hover text-muted-foreground hover:text-accent transition-colors"
           onClick={(e) => e.stopPropagation()}
         >
@@ -60,6 +68,6 @@ export default function ReadItemCard({ item }: { item: ReadItem }) {
           ))}
         </div>
       )}
-    </CardWrapper>
+    </div>
   );
 }
