@@ -41,6 +41,24 @@ export interface DailyHeatmapBreakdown {
   artikel: number;
 }
 
+export interface ContributionStats {
+  totalContributions: number;
+  totalDaily: number;
+  totalWriting: number;
+  totalArtikel: number;
+  totalTulisan: number;
+  activeDays: number;
+  averagePerActiveDay: number;
+  mostActiveDate: string | null;
+  mostActiveCount: number;
+  thisYearContributions: number;
+  thisYearDaily: number;
+  thisYearWriting: number;
+  thisYearArtikel: number;
+  thisYearActiveDays: number;
+  thisYearAveragePerActiveDay: number;
+}
+
 interface HeatmapRangeConfig {
   startDate: string | Date;
   endDate: string | Date;
@@ -244,6 +262,81 @@ export function buildContributionEntries(
   return [...dailyEntries, ...postEntries].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
+}
+
+export function getContributionStats(
+  entries: ContributionEntry[],
+  referenceDate: Date = new Date()
+): ContributionStats {
+  const currentYear = referenceDate.getFullYear();
+  const allDateCounter = new Map<string, number>();
+  const thisYearDateCounter = new Map<string, number>();
+  const stats: ContributionStats = {
+    totalContributions: entries.length,
+    totalDaily: 0,
+    totalWriting: 0,
+    totalArtikel: 0,
+    totalTulisan: 0,
+    activeDays: 0,
+    averagePerActiveDay: 0,
+    mostActiveDate: null,
+    mostActiveCount: 0,
+    thisYearContributions: 0,
+    thisYearDaily: 0,
+    thisYearWriting: 0,
+    thisYearArtikel: 0,
+    thisYearActiveDays: 0,
+    thisYearAveragePerActiveDay: 0,
+  };
+
+  entries.forEach((entry) => {
+    if (entry.kind === "daily") stats.totalDaily += 1;
+    if (entry.kind === "writing") stats.totalWriting += 1;
+    if (entry.kind === "artikel") stats.totalArtikel += 1;
+
+    const entryDate = new Date(entry.date);
+    const entryYear = entryDate.getFullYear();
+    if (!Number.isNaN(entryDate.getTime())) {
+      const dateKey = toDateKey(entryDate);
+      allDateCounter.set(dateKey, (allDateCounter.get(dateKey) ?? 0) + 1);
+    }
+
+    if (!Number.isNaN(entryYear) && entryYear === currentYear) {
+      stats.thisYearContributions += 1;
+      if (entry.kind === "daily") stats.thisYearDaily += 1;
+      if (entry.kind === "writing") stats.thisYearWriting += 1;
+      if (entry.kind === "artikel") stats.thisYearArtikel += 1;
+
+      if (!Number.isNaN(entryDate.getTime())) {
+        const dateKey = toDateKey(entryDate);
+        thisYearDateCounter.set(dateKey, (thisYearDateCounter.get(dateKey) ?? 0) + 1);
+      }
+    }
+  });
+
+  stats.totalTulisan = stats.totalWriting + stats.totalArtikel;
+  stats.activeDays = allDateCounter.size;
+  stats.thisYearActiveDays = thisYearDateCounter.size;
+  stats.averagePerActiveDay =
+    stats.activeDays > 0 ? Number((stats.totalContributions / stats.activeDays).toFixed(2)) : 0;
+  stats.thisYearAveragePerActiveDay =
+    stats.thisYearActiveDays > 0
+      ? Number((stats.thisYearContributions / stats.thisYearActiveDays).toFixed(2))
+      : 0;
+
+  allDateCounter.forEach((count, date) => {
+    if (count > stats.mostActiveCount) {
+      stats.mostActiveCount = count;
+      stats.mostActiveDate = date;
+      return;
+    }
+
+    if (count === stats.mostActiveCount && stats.mostActiveDate && date > stats.mostActiveDate) {
+      stats.mostActiveDate = date;
+    }
+  });
+
+  return stats;
 }
 
 export function buildContributionHeatmap(

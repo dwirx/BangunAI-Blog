@@ -10,6 +10,7 @@ import {
   compressHeatmapByActivity,
   filterDailyNotes,
   findClosestDailyNote,
+  getContributionStats,
   getContributionYears,
   getContributionRangeDays,
   getDailyMonthOptions,
@@ -140,6 +141,36 @@ describe("daily utils", () => {
     expect(entries.find((entry) => entry.kind === "daily")).toBeDefined();
     expect(entries.find((entry) => entry.kind === "writing")?.url).toBe("/writing/post-writing");
     expect(entries.find((entry) => entry.kind === "artikel")?.url).toBe("/artikel/post-article");
+  });
+
+  it("builds aggregate contribution stats for all-time and current year", () => {
+    const entries = [
+      ...buildContributionEntries(notes, posts),
+      {
+        id: "daily:older",
+        title: "Older Daily",
+        date: "2025-12-30",
+        url: "/daily/older",
+        kind: "daily" as const,
+      },
+    ];
+
+    const stats = getContributionStats(entries, new Date("2026-03-10T09:00:00"));
+    expect(stats.totalContributions).toBe(9);
+    expect(stats.totalDaily).toBe(7);
+    expect(stats.totalWriting).toBe(1);
+    expect(stats.totalArtikel).toBe(1);
+    expect(stats.totalTulisan).toBe(2);
+    expect(stats.activeDays).toBe(6);
+    expect(stats.averagePerActiveDay).toBe(1.5);
+    expect(stats.mostActiveDate).toBe("2026-03-10");
+    expect(stats.mostActiveCount).toBe(2);
+    expect(stats.thisYearContributions).toBe(8);
+    expect(stats.thisYearDaily).toBe(6);
+    expect(stats.thisYearWriting).toBe(1);
+    expect(stats.thisYearArtikel).toBe(1);
+    expect(stats.thisYearActiveDays).toBe(5);
+    expect(stats.thisYearAveragePerActiveDay).toBe(1.6);
   });
 
   it("builds contribution heatmap cells with clickable date breakdown", () => {

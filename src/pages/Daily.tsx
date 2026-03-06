@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { dailyNotes, posts } from "@/data/posts";
-import { CalendarDays, NotebookPen, Hash, Flame, ArrowUpRight } from "lucide-react";
+import { CalendarDays, NotebookPen, Hash, Flame, ArrowUpRight, BookOpen } from "lucide-react";
 import FilterChips from "@/components/FilterChips";
 import {
   buildContributionEntries,
@@ -16,6 +16,7 @@ import {
   filterDailyNotes,
   findClosestDailyNote,
   getDailyMonthOptions,
+  getContributionStats,
   getDailyStreakStats,
 } from "@/lib/daily";
 import { cn } from "@/lib/utils";
@@ -87,9 +88,17 @@ export default function Daily() {
   const currentYear = new Date().getFullYear();
   const streak = useMemo(() => getDailyStreakStats(dailyNotes), []);
   const contributionEntries = useMemo(() => buildContributionEntries(dailyNotes, posts), []);
+  const contributionStats = useMemo(
+    () => getContributionStats(contributionEntries),
+    [contributionEntries]
+  );
   const filteredContributionEntries = useMemo(
     () => contributionEntries.filter((entry) => selectedSources.includes(entry.kind)),
     [contributionEntries, selectedSources]
+  );
+  const filteredContributionStats = useMemo(
+    () => getContributionStats(filteredContributionEntries),
+    [filteredContributionEntries]
   );
   const availableYears = useMemo(
     () => getContributionYears(filteredContributionEntries),
@@ -159,6 +168,7 @@ export default function Daily() {
         .join(" + "),
     [selectedSources]
   );
+  const allSourcesEnabled = selectedSources.length === contributionSourceOptions.length;
   const activeDayCount = useMemo(() => {
     if (heatmapViewMode === "all") {
       const activeDays = new Set<string>();
@@ -200,10 +210,15 @@ export default function Daily() {
     [jumpDate]
   );
 
-  const thisYearCount = dailyNotes.filter(
-    (note) => new Date(note.date).getFullYear() === currentYear
-  ).length;
   const totalTags = new Set(dailyNotes.flatMap((note) => note.tags)).size;
+  const averageContribPerActiveDay = useMemo(
+    () =>
+      new Intl.NumberFormat("id-ID", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }).format(contributionStats.averagePerActiveDay),
+    [contributionStats.averagePerActiveDay]
+  );
 
   const openJumpTarget = () => {
     if (!jumpTarget) return;
@@ -366,13 +381,13 @@ export default function Daily() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         <div className="glass-card flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-primary/15 text-primary">
             <NotebookPen size={20} />
           </div>
           <div>
-            <p className="text-2xl font-heading font-bold">{dailyNotes.length}</p>
+            <p className="text-2xl font-heading font-bold">{contributionStats.totalDaily}</p>
             <p className="text-xs text-muted-foreground">Total catatan</p>
           </div>
         </div>
@@ -381,12 +396,46 @@ export default function Daily() {
             <CalendarDays size={20} />
           </div>
           <div>
-            <p className="text-2xl font-heading font-bold">{thisYearCount}</p>
-            <p className="text-xs text-muted-foreground">Tahun ini</p>
+            <p className="text-2xl font-heading font-bold">{contributionStats.totalContributions}</p>
+            <p className="text-xs text-muted-foreground">Total kontribusi</p>
+            <p className="text-[10px] text-muted-foreground/75">Hari aktif: {contributionStats.activeDays}</p>
+          </div>
+        </div>
+        <div className="glass-card flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-sky-400/15 text-sky-300">
+            <BookOpen size={20} />
+          </div>
+          <div>
+            <p className="text-2xl font-heading font-bold">{contributionStats.totalTulisan}</p>
+            <p className="text-xs text-muted-foreground">Total tulisan</p>
+            <p className="text-[10px] text-muted-foreground/75">
+              Writing {contributionStats.totalWriting} • Artikel {contributionStats.totalArtikel}
+            </p>
           </div>
         </div>
         <div className="glass-card flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-highlight/15 text-highlight">
+            <CalendarDays size={20} />
+          </div>
+          <div>
+            <p className="text-2xl font-heading font-bold">{contributionStats.thisYearContributions}</p>
+            <p className="text-xs text-muted-foreground">Kontribusi tahun {currentYear}</p>
+            <p className="text-[10px] text-muted-foreground/75">
+              Daily {contributionStats.thisYearDaily} • Writing {contributionStats.thisYearWriting} • Artikel {contributionStats.thisYearArtikel}
+            </p>
+          </div>
+        </div>
+        <div className="glass-card flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-secondary/70 text-muted-foreground">
+            <CalendarDays size={20} />
+          </div>
+          <div>
+            <p className="text-2xl font-heading font-bold">{averageContribPerActiveDay}</p>
+            <p className="text-xs text-muted-foreground">Rata-rata kontribusi/hari aktif</p>
+          </div>
+        </div>
+        <div className="glass-card flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/15 text-primary">
             <Hash size={20} />
           </div>
           <div>
@@ -414,6 +463,11 @@ export default function Daily() {
             <p className="text-xs text-muted-foreground/65 mt-1">
               Sumber aktif: {activeSourceLabel}
             </p>
+            {!allSourcesEnabled && (
+              <p className="text-[11px] text-muted-foreground/70 mt-1">
+                Menampilkan {filteredContributionStats.totalContributions} dari {contributionStats.totalContributions} kontribusi.
+              </p>
+            )}
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
             <span className="text-xs text-muted-foreground/65 sm:text-right">
