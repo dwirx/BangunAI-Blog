@@ -7,6 +7,8 @@ export { categories } from "./types";
 import { allPosts, allReadItems, allDailyNotes } from "@/content";
 import type { Post, PostType, Category } from "./types";
 
+export type RelatedPost = Post & { _sharedTags: number };
+
 export const posts: Post[] = allPosts;
 export const readItems = allReadItems;
 export const dailyNotes = allDailyNotes;
@@ -45,12 +47,21 @@ export function getReadBySlug(slug: string) {
   return readItems.find((r) => r.slug === slug);
 }
 
-export function getRelatedPosts(slug: string, count: number = 3) {
+export function getRelatedPosts(slug: string, count: number = 4): RelatedPost[] {
   const post = getPostBySlug(slug);
   if (!post) return [];
+
   return posts
-    .filter((p) => p.slug !== slug && (p.category === post.category || p.type === post.type))
-    .slice(0, count);
+    .filter((p) => p.slug !== slug)
+    .map((p) => {
+      const tagOverlap = p.tags.filter((t) => post.tags.includes(t)).length;
+      const score = tagOverlap * 3 + (p.category === post.category ? 2 : 0) + (p.type === post.type ? 1 : 0);
+      return { post: p, score, tagOverlap };
+    })
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, count)
+    .map(({ post: p, tagOverlap }) => ({ ...p, _sharedTags: tagOverlap }));
 }
 
 export function getLatestDailyNotes(count: number = 7) {
