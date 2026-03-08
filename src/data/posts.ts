@@ -39,6 +39,18 @@ export function getArticlePosts() {
   return posts.filter((p) => p.type === "article");
 }
 
+export function getWritingTags(): string[] {
+  const tags = new Set<string>();
+  getWritingPosts().forEach((p) => p.tags.forEach((t) => tags.add(t)));
+  return [...tags].sort();
+}
+
+export function getArticleTags(): string[] {
+  const tags = new Set<string>();
+  getArticlePosts().forEach((p) => p.tags.forEach((t) => tags.add(t)));
+  return [...tags].sort();
+}
+
 export function getPostBySlug(slug: string) {
   return posts.find((p) => p.slug === slug);
 }

@@ -1,17 +1,20 @@
 import { useState, useMemo } from "react";
-import { getArticlePosts, categories } from "@/data/posts";
+import { getArticlePosts, getArticleTags, categories } from "@/data/posts";
 import { ListCard } from "@/components/PostCard";
 import FilterChips from "@/components/FilterChips";
 
 export default function Articles() {
   const [catFilter, setCatFilter] = useState<string | null>(null);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const allArticles = getArticlePosts();
+  const allTags = useMemo(() => getArticleTags(), []);
 
   const filtered = useMemo(() => {
     let result = allArticles;
     if (catFilter) result = result.filter((p) => p.category === catFilter);
+    if (tagFilter) result = result.filter((p) => p.tags.includes(tagFilter));
     return result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [catFilter, allArticles]);
+  }, [catFilter, tagFilter, allArticles]);
 
   const grouped = useMemo(() => {
     const map = new Map<number, typeof filtered>();
@@ -32,14 +35,17 @@ export default function Articles() {
         </p>
       </div>
 
-      <div className="mb-10">
+      <div className="space-y-3 mb-10">
         <FilterChips options={categories} selected={catFilter} onSelect={setCatFilter} />
+        {allTags.length > 0 && (
+          <FilterChips options={allTags} selected={tagFilter} onSelect={setTagFilter} allLabel="Semua Tag" />
+        )}
       </div>
 
       {grouped.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-muted-foreground mb-4">Tidak ada artikel dengan filter ini.</p>
-          <button onClick={() => setCatFilter(null)} className="text-sm text-accent hover:opacity-80">
+          <button onClick={() => { setCatFilter(null); setTagFilter(null); }} className="text-sm text-accent hover:opacity-80">
             Reset filter
           </button>
         </div>
