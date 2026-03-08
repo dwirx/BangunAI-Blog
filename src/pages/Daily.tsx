@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { dailyNotes, posts } from "@/data/posts";
 import { CalendarDays, NotebookPen, Hash, Flame, ArrowUpRight, BookOpen } from "lucide-react";
-import FilterChips from "@/components/FilterChips";
+import TagSelect from "@/components/TagSelect";
 import {
   buildContributionEntries,
   buildContributionHeatmap,
@@ -719,12 +719,7 @@ export default function Daily() {
           <p className="text-xs text-muted-foreground/75">{jumpHint}</p>
         )}
 
-        <FilterChips
-          options={allTags}
-          selected={tagFilter}
-          onSelect={setTagFilter}
-          allLabel="Semua Tag"
-        />
+        <TagSelect tags={allTags} selected={tagFilter} onSelect={setTagFilter} placeholder="Semua Tag" />
       </section>
 
       {filteredNotes.length === 0 ? (
