@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { formatDateTime } from "@/lib/date";
 import { getContentBySlug } from "@/content";
-import { getRelatedPosts } from "@/data/posts";
+import { getRelatedPosts, type RelatedPost } from "@/data/posts";
 import TypeBadge from "@/components/TypeBadge";
 import { CompactRow } from "@/components/PostCard";
 import { mdxComponents } from "@/components/MdxComponents";
@@ -19,7 +19,7 @@ type MdxRendererProps = {
 export default function ArticleDetail() {
   const { slug } = useParams<{ slug: string }>();
   const post = getContentBySlug(slug || "");
-  const related = useMemo(() => getRelatedPosts(slug || "", 3), [slug]);
+  const related = useMemo(() => getRelatedPosts(slug || "", 4), [slug]);
   const [progress, setProgress] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -125,11 +125,41 @@ export default function ArticleDetail() {
         {/* Related */}
         {related.length > 0 && (
           <div className="max-w-[68ch] w-full mx-auto mt-14">
-            <h2 className="text-xs uppercase tracking-widest text-muted-foreground/40 mb-4">Tulisan Terkait</h2>
-            <div className="divide-y divide-border/40">
-              {related.map((p) => (
-                <CompactRow key={p.slug} post={p} />
-              ))}
+            <h2 className="text-xs uppercase tracking-widest text-muted-foreground/40 mb-5">
+              Mungkin Relevan
+            </h2>
+            <div className="grid gap-3">
+              {(related as RelatedPost[]).map((p) => {
+                const link = p.type === "article" ? `/artikel/${p.slug}` : `/writing/${p.slug}`;
+                return (
+                  <Link
+                    key={p.slug}
+                    to={link}
+                    className="group glass rounded-xl p-4 hover:bg-[hsl(var(--glass-bg-hover))] transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <TypeBadge type={p.type} />
+                          <span className="text-xs text-muted-foreground/60">{p.category}</span>
+                          {p._sharedTags > 0 && (
+                            <span className="text-xs text-accent/70 ml-auto">
+                              {p._sharedTags} tag sama
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium group-hover:text-accent transition-colors line-clamp-1">
+                          {p.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground/60 line-clamp-1 mt-0.5">{p.summary}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground/40 flex-shrink-0 pt-1">
+                        {p.readingTime}m
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}
