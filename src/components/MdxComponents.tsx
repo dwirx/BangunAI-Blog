@@ -50,14 +50,23 @@ type MdxComponentRegistry = Record<string, ComponentType<MdxComponentProps> | ((
 export const mdxComponents: MdxComponentRegistry = {
   pre: PreBlock,
 
+  // Scrollable table wrapper for mobile
+  table: (props: { children?: ReactNode }) => (
+    <div className="overflow-x-auto my-8 rounded-lg border border-border">
+      <table className="w-full text-sm min-w-[480px]" style={{ margin: 0 }}>
+        {props.children}
+      </table>
+    </div>
+  ),
+
   // Callout component usage: <Callout type="info" title="Title">content</Callout>
   Callout,
 
   // YouTube embed: <YouTube url="..." />
-  YouTube: YouTubeEmbed,
+  YouTube: YouTubeEmbed as unknown as ComponentType<MdxComponentProps>,
 
   // Wiki link: <WikiLink to="slug" label="display" />
-  WikiLink,
+  WikiLink: WikiLink as unknown as ComponentType<MdxComponentProps>,
 
   // Highlight: <Highlight>text</Highlight>
   Highlight,

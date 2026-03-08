@@ -259,11 +259,11 @@
   }
 
   .prose-article table {
-    @apply w-full my-8 text-sm;
+    @apply w-full text-sm;
   }
 
   .prose-article th {
-    @apply text-left font-semibold py-2 px-3 border-b-2 border-border;
+    @apply text-left font-semibold py-2 px-3 border-b-2 border-border whitespace-nowrap;
     font-family: 'Space Grotesk', sans-serif;
   }
 
