@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
-import { formatDateTime } from "@/lib/date";
+import { formatDateTime, formatDateShort } from "@/lib/date";
 import { getContentBySlug } from "@/content";
 import { getRelatedPosts, type RelatedPost } from "@/data/posts";
 import TypeBadge from "@/components/TypeBadge";
@@ -124,26 +124,26 @@ export default function ArticleDetail() {
         {/* Related */}
         {related.length > 0 && (
           <div className="max-w-[68ch] w-full mx-auto mt-14">
-            <h2 className="text-xs uppercase tracking-widest text-muted-foreground/40 mb-4">
+            <h2 className="text-xs uppercase tracking-widest text-muted-foreground/40 mb-3">
               Tulisan Terkait
             </h2>
-            <div className="divide-y divide-border/40">
+            <div className="divide-y divide-border/30">
               {(related as RelatedPost[]).map((p) => {
                 const link = p.type === "article" ? `/artikel/${p.slug}` : `/writing/${p.slug}`;
                 return (
                   <Link
                     key={p.slug}
                     to={link}
-                    className="group flex items-center justify-between gap-3 py-3"
+                    className="group flex items-center justify-between gap-4 py-2.5 -mx-2 px-2 rounded-lg hover:bg-secondary/40 transition-colors"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <TypeBadge type={p.type} />
                       <span className="text-sm font-medium group-hover:text-accent transition-colors truncate">
                         {p.title}
                       </span>
                     </div>
-                    <span className="text-xs text-muted-foreground/50 flex-shrink-0">
-                      {p.readingTime}m
+                    <span className="text-xs text-muted-foreground/45 flex-shrink-0 tabular-nums">
+                      {formatDateShort(p.date)}
                     </span>
                   </Link>
                 );
