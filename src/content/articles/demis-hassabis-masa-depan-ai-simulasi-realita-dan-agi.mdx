@@ -191,13 +191,13 @@ Hasilnya: sistem yang bisa **menemukan algoritma baru** yang belum pernah dipiki
 
 ```mermaid
 graph TD
-    A["🧠 Foundation Model\n(LLM)"] --> B["Mengusulkan Kandidat Solusi\n(seed programs)"]
-    B --> C["Evolutionary Engine\n(mutasi + crossover + seleksi)"]
-    C --> D{"Solusi Lebih Baik\ndari yang Diketahui?"}
-    D -->|Ya| E["✅ Breakthrough!\n(contoh: faster matrix multiplication)"]
-    D -->|Tidak| F["Terus Iterasi\n(generasi berikutnya)"]
+    A["🧠 Foundation Model LLM"] --> B["Mengusulkan Kandidat Solusi"]
+    B --> C["Evolutionary Engine — mutasi + crossover + seleksi"]
+    C --> D{Solusi Lebih Baik?}
+    D -->|Ya| E["✅ Breakthrough — faster matrix multiplication dll"]
+    D -->|Tidak| F["Terus Iterasi ke generasi berikutnya"]
     F --> C
-    E --> G["Masuk ke Base Knowledge\nuntuk iterasi selanjutnya"]
+    E --> G["Masuk ke Base Knowledge untuk iterasi selanjutnya"]
 ```
 
 ### Keterbatasan Evolusi Tradisional
@@ -386,11 +386,11 @@ Untuk AI berbasis silicon, kita bisa (suatu hari nanti) memverifikasi alasan #1.
 
 ```mermaid
 graph TD
-    A["❓ Apakah X Sadar?"] --> B{Perilaku seperti\nmakhluk sadar?}
+    A["❓ Apakah X Sadar?"] --> B{Perilaku seperti makhluk sadar?}
     B -->|Tidak| C["❌ Kemungkinan Besar Tidak Sadar"]
-    B -->|Ya| D{Substrat sama\n(berbasis karbon)?}
-    D -->|Ya| E["✅ Sangat Mungkin Sadar\n(parsimoni: asumsi terbaik)"]
-    D -->|Tidak\n(silicon, dll)| F["🤷 Tidak Bisa Dipastikan\n(frontier filosofis)"]
+    B -->|Ya| D{Substrat berbasis karbon?}
+    D -->|Ya| E["✅ Sangat Mungkin Sadar — parsimoni terbaik"]
+    D -->|Tidak — silicon dll| F["🤷 Tidak Bisa Dipastikan — frontier filosofis"]
 ```
 
 ### Definisi Kesadaran yang Elegan
