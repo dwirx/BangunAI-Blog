@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { getWritingPosts, categories } from "@/data/posts";
+import { getWritingPosts, getWritingTags, categories } from "@/data/posts";
 import { ListCard } from "@/components/PostCard";
 import FilterChips from "@/components/FilterChips";
 
@@ -8,16 +8,19 @@ const typeOptions = ["Notes", "Essays"];
 export default function Writing() {
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [catFilter, setCatFilter] = useState<string | null>(null);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
 
   const allWriting = getWritingPosts();
+  const allTags = useMemo(() => getWritingTags(), []);
 
   const filtered = useMemo(() => {
     let result = allWriting;
     if (typeFilter === "Notes") result = result.filter((p) => p.type === "note");
     if (typeFilter === "Essays") result = result.filter((p) => p.type === "essay");
     if (catFilter) result = result.filter((p) => p.category === catFilter);
+    if (tagFilter) result = result.filter((p) => p.tags.includes(tagFilter));
     return result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [typeFilter, catFilter, allWriting]);
+  }, [typeFilter, catFilter, tagFilter, allWriting]);
 
   return (
     <div className="container mx-auto px-6 pt-24 pb-12">
@@ -31,6 +34,9 @@ export default function Writing() {
       <div className="space-y-4 mb-10">
         <FilterChips options={typeOptions} selected={typeFilter} onSelect={setTypeFilter} />
         <FilterChips options={categories} selected={catFilter} onSelect={setCatFilter} />
+        {allTags.length > 0 && (
+          <FilterChips options={allTags} selected={tagFilter} onSelect={setTagFilter} allLabel="Semua Tag" />
+        )}
       </div>
 
       <div>
@@ -38,7 +44,7 @@ export default function Writing() {
           <div className="text-center py-16">
             <p className="text-muted-foreground mb-4">Tidak ada tulisan dengan filter ini.</p>
             <button
-              onClick={() => { setTypeFilter(null); setCatFilter(null); }}
+              onClick={() => { setTypeFilter(null); setCatFilter(null); setTagFilter(null); }}
               className="text-sm text-accent hover:opacity-80"
             >
               Reset filter
