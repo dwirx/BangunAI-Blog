@@ -34,6 +34,7 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const transformRef = useRef<Transform>({ x: 0, y: 0, scale: 1 });
   const isPanning = useRef(false);
@@ -229,13 +230,16 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
         ctx.beginPath();
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t2.x, t2.y);
+        const dimEdge = (currentSlug || hovered) && !isActive && !isHoverEdge;
+        ctx.globalAlpha = dimEdge ? 0.2 : 1;
         ctx.strokeStyle = isActive
-          ? "rgba(124,58,237,0.56)"
+          ? "rgba(217,119,6,0.6)"
           : isHoverEdge
-            ? "rgba(148,163,184,0.35)"
-            : `rgba(100,116,139,${0.06 + e.weight * 0.025 + kindTint * 0.02})`;
-        ctx.lineWidth = (isActive ? 2.1 + e.weight * 0.2 : isHoverEdge ? 1.2 + e.weight * 0.12 : 0.45 + e.weight * 0.06) / t.scale;
+            ? "rgba(148,163,184,0.38)"
+            : `rgba(100,116,139,${0.07 + e.weight * 0.03 + kindTint * 0.025})`;
+        ctx.lineWidth = (isActive ? 2.2 + e.weight * 0.2 : isHoverEdge ? 1.3 + e.weight * 0.12 : 0.5 + e.weight * 0.07) / t.scale;
         ctx.stroke();
+        ctx.globalAlpha = 1;
       });
 
       // Nodes
@@ -249,16 +253,17 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
         const isCurrent = n.id === currentSlug;
         const isHovered = n.id === hovered;
         const isConnected = connectedEdges.has(n.id);
-        const radius = isCurrent ? 8 : isHovered ? 7 : isConnected ? 5 : 4;
+        const isDimmed = (currentSlug || hovered) && !isCurrent && !isHovered && !isConnected;
+        const radius = isCurrent ? 9 : isHovered ? 7.5 : isConnected ? 5.5 : 4;
         const color = colors[n.type] || "#64748b";
 
-        // Outer glow for active nodes
+        // Outer glow for active/hovered nodes
         if (isCurrent || isHovered) {
-          const glowRadius = radius + 14;
+          const glowRadius = radius + 16;
           const grad = ctx.createRadialGradient(n.x, n.y, radius * 0.5, n.x, n.y, glowRadius);
-          const glowColor = isCurrent ? "124,58,237" : "148,163,184";
-          grad.addColorStop(0, `rgba(${glowColor},0.25)`);
-          grad.addColorStop(0.6, `rgba(${glowColor},0.08)`);
+          const glowColor = isCurrent ? "217,119,6" : "148,163,184";
+          grad.addColorStop(0, `rgba(${glowColor},0.3)`);
+          grad.addColorStop(0.5, `rgba(${glowColor},0.1)`);
           grad.addColorStop(1, `rgba(${glowColor},0)`);
           ctx.beginPath();
           ctx.arc(n.x, n.y, glowRadius, 0, Math.PI * 2);
@@ -266,47 +271,62 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
           ctx.fill();
         }
 
-        // Node circle with subtle gradient
+        // Node circle
+        ctx.globalAlpha = isDimmed ? 0.25 : 1;
         const nodeGrad = ctx.createRadialGradient(n.x - radius * 0.3, n.y - radius * 0.3, 0, n.x, n.y, radius);
-        nodeGrad.addColorStop(0, isCurrent ? "#9b6dff" : color);
-        nodeGrad.addColorStop(1, isCurrent ? "#7c3aed" : color);
+        nodeGrad.addColorStop(0, isCurrent ? "#fcd34d" : color);
+        nodeGrad.addColorStop(1, isCurrent ? "#d97706" : color);
         ctx.beginPath();
         ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = nodeGrad;
         ctx.fill();
+        ctx.globalAlpha = 1;
 
         // Ring for current
         if (isCurrent) {
           ctx.beginPath();
-          ctx.arc(n.x, n.y, radius + 3.5, 0, Math.PI * 2);
-          ctx.strokeStyle = "rgba(124,58,237,0.35)";
+          ctx.arc(n.x, n.y, radius + 4, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(217,119,6,0.45)";
           ctx.lineWidth = 1.5 / t.scale;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, radius + 7, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(217,119,6,0.15)";
+          ctx.lineWidth = 1 / t.scale;
           ctx.stroke();
         }
 
-        // Label
-        if (isCurrent || isHovered) {
-          const fontSize = Math.max(10, 11 / t.scale);
-          ctx.font = `600 ${fontSize}px 'Space Grotesk', system-ui, sans-serif`;
+        // Labels — show for current, hovered, and connected nodes
+        const showLabel = isCurrent || isHovered || isConnected;
+        if (showLabel) {
+          const fontSize = Math.max(9, (isCurrent ? 11.5 : 10) / t.scale);
+          ctx.font = `${isCurrent ? "700" : "500"} ${fontSize}px 'Space Grotesk', system-ui, sans-serif`;
           ctx.textAlign = "center";
           const text = n.label;
           const tw = ctx.measureText(text).width;
-          const pad = 6;
-          const lh = fontSize + 6;
-          const ly = n.y - radius - lh - 2;
+          const pad = 5;
+          const lh = fontSize + 5;
+          const ly = n.y - radius - lh - 3;
 
-          // Label background with rounded rect
-          ctx.fillStyle = "rgba(15,23,42,0.92)";
+          ctx.globalAlpha = isConnected && !isHovered && !isCurrent ? 0.65 : 1;
+
+          // Label background
+          ctx.fillStyle = "rgba(10,15,28,0.88)";
           ctx.beginPath();
-          ctx.roundRect(n.x - tw / 2 - pad, ly, tw + pad * 2, lh, 5);
+          ctx.roundRect(n.x - tw / 2 - pad, ly, tw + pad * 2, lh, 4);
           ctx.fill();
-          ctx.strokeStyle = "rgba(100,116,139,0.15)";
+          ctx.strokeStyle = isCurrent ? "rgba(217,119,6,0.3)" : "rgba(100,116,139,0.12)";
           ctx.lineWidth = 0.5 / t.scale;
           ctx.stroke();
 
           // Label text
-          ctx.fillStyle = isCurrent ? "rgba(167,139,250,0.95)" : "rgba(226,232,240,0.95)";
-          ctx.fillText(text, n.x, ly + lh - 5);
+          ctx.fillStyle = isCurrent
+            ? "rgba(253,211,77,0.95)"
+            : isHovered
+              ? "rgba(226,232,240,0.95)"
+              : "rgba(148,163,184,0.85)";
+          ctx.fillText(text, n.x, ly + lh - 4);
+          ctx.globalAlpha = 1;
         }
       });
 
@@ -372,11 +392,12 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
 
     const node = findNodeAt(mx, my);
     setHoveredNode(node?.id || null);
+    setHoveredLabel(node ? allPosts.find(p => p.slug === node.id)?.title || node.label : null);
     const canvas = canvasRef.current;
     if (canvas) canvas.style.cursor = node ? "pointer" : "grab";
   }, [findNodeAt, screenToCanvas, getCanvasPos]);
 
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+  const handlePointerUp = useCallback((_e: React.PointerEvent<HTMLCanvasElement>) => {
     if (dragNode.current && !dragMoved.current) {
       dragNode.current.pinned = dragWasPinned.current;
       const node = dragNode.current;
@@ -514,18 +535,26 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
 
       {/* Canvas */}
       {!isCollapsed && (
-        <div ref={containerRef} className="relative h-[300px] sm:h-[350px]">
+        <div ref={containerRef} className="relative h-[340px] sm:h-[420px]">
           <canvas
             ref={canvasRef}
             className="w-full h-full touch-none"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            onPointerLeave={() => { isPanning.current = false; dragNode.current = null; }}
+            onPointerLeave={() => { isPanning.current = false; dragNode.current = null; setHoveredNode(null); setHoveredLabel(null); }}
             onWheel={handleWheel}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
           />
+          {/* Hovered node tooltip */}
+          {hoveredLabel && (
+            <div className="absolute top-3 left-3 right-16 pointer-events-none">
+              <span className="inline-block max-w-full text-xs text-foreground/80 bg-background/85 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-border/30 truncate shadow-sm">
+                {hoveredLabel}
+              </span>
+            </div>
+          )}
           {/* Controls */}
           <div className="absolute bottom-3 right-3 flex flex-col gap-1">
             <ControlBtn onClick={() => zoomBy(1.4)} title="Zoom in"><ZoomIn size={14} /></ControlBtn>
