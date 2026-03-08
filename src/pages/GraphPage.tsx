@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { allPosts } from "@/content";
 import { buildHybridGraph, seededUnit, type GraphEdgeKind } from "@/lib/graph-engine";
-import { ZoomIn, ZoomOut, Search, ArrowLeft, RotateCcw, Focus, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { ZoomIn, ZoomOut, Search, ArrowLeft, RotateCcw, Focus, SlidersHorizontal, ChevronDown, Download } from "lucide-react";
 
 interface Node {
   id: string;
@@ -96,6 +96,8 @@ export default function GraphPage() {
   const touchDragging = useRef(false);
   const dragMovedRef = useRef(false);
   const dragWasPinnedRef = useRef(false);
+  const kineticEnergyRef = useRef(999);
+  const stableFramesRef = useRef(0);
 
   const { nodes, edges } = useMemo(() => {
     const graph = buildHybridGraph(allPosts);
@@ -120,6 +122,18 @@ export default function GraphPage() {
 
     return { nodes: nodeList, edges: graph.edges };
   }, []);
+
+  const degreeMap = useMemo(() => {
+    const map = new Map<string, number>();
+    edges.forEach((e) => {
+      map.set(e.source, (map.get(e.source) ?? 0) + 1);
+      map.set(e.target, (map.get(e.target) ?? 0) + 1);
+    });
+    return map;
+  }, [edges]);
+
+  const degreeMapRef = useRef(degreeMap);
+  degreeMapRef.current = degreeMap;
 
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
@@ -264,6 +278,13 @@ export default function GraphPage() {
             n.y -= (n.y / radius) * pull;
           }
         });
+
+        // Track kinetic energy for adaptive cooling
+        let totalKE = 0;
+        visibleNodes.forEach((n) => { if (!n.pinned) totalKE += n.vx * n.vx + n.vy * n.vy; });
+        kineticEnergyRef.current = totalKE;
+        if (totalKE < 0.8) stableFramesRef.current++;
+        else stableFramesRef.current = 0;
       }
 
       // Draw
@@ -306,7 +327,7 @@ export default function GraphPage() {
         ctx.lineTo(t2.x, t2.y);
         const kindTint = e.kind === "direct" ? 1 : e.kind === "semantic" ? 0.7 : 0.45;
         ctx.strokeStyle = isActive
-          ? `rgba(124,58,237,${0.28 + e.weight * 0.07 + alphaBoost})`
+          ? `rgba(217,119,6,${0.35 + e.weight * 0.07 + alphaBoost})`
           : !alwaysShowLines && dimmed
             ? "rgba(100,116,139,0.03)"
             : `rgba(100,116,139,${(alwaysShowLines ? 0.14 + e.weight * 0.03 + kindTint * 0.03 : 0.05 + e.weight * 0.025 + kindTint * 0.02) + alphaBoost})`;
@@ -353,15 +374,16 @@ export default function GraphPage() {
         const dimmed = activeNode && !isSelected && !isHovered && !isConnected;
         const matchesSearch = searchLower && (n.fullLabel.toLowerCase().includes(searchLower) || n.tags.some(t3 => t3.toLowerCase().includes(searchLower)));
 
-        const baseRadius = 5 * nodeSizeScale;
-        const radius = isSelected ? 10 : isHovered ? 8 : isConnected ? 6 : matchesSearch ? 8 : baseRadius;
+        const degree = degreeMapRef.current.get(n.id) ?? 0;
+        const baseRadius = (4 + Math.min(degree * 0.18, 3.5)) * nodeSizeScale;
+        const radius = isSelected ? baseRadius + 5 : isHovered ? baseRadius + 3 : isConnected ? baseRadius + 1 : matchesSearch ? baseRadius + 3 : baseRadius;
         const color = colors[n.type] || "#64748b";
 
         // Glow
         if (isSelected || isHovered || matchesSearch) {
           const glowR = radius + 14;
           const grad = ctx.createRadialGradient(n.x, n.y, radius * 0.5, n.x, n.y, glowR);
-          const glowColor = isSelected ? "124,58,237" : matchesSearch ? "56,189,248" : "148,163,184";
+          const glowColor = isSelected ? "217,119,6" : matchesSearch ? "56,189,248" : "148,163,184";
           grad.addColorStop(0, `rgba(${glowColor},0.3)`);
           grad.addColorStop(0.6, `rgba(${glowColor},0.08)`);
           grad.addColorStop(1, "transparent");
@@ -383,7 +405,7 @@ export default function GraphPage() {
         if (isSelected || isHovered) {
           ctx.beginPath();
           ctx.arc(n.x, n.y, radius + 3, 0, Math.PI * 2);
-          ctx.strokeStyle = isSelected ? "rgba(124,58,237,0.5)" : "rgba(255,255,255,0.25)";
+          ctx.strokeStyle = isSelected ? "rgba(217,119,6,0.55)" : "rgba(255,255,255,0.25)";
           ctx.lineWidth = 1.5 / t.scale;
           ctx.stroke();
         }
@@ -417,17 +439,22 @@ export default function GraphPage() {
           ctx.lineWidth = 0.5 / t.scale;
           ctx.stroke();
 
-          ctx.fillStyle = isSelected ? "rgba(167,139,250,0.95)" : isHovered ? "rgba(226,232,240,0.95)" : "rgba(226,232,240,0.7)";
+          ctx.fillStyle = isSelected ? "rgba(253,211,77,0.95)" : isHovered ? "rgba(226,232,240,0.95)" : "rgba(226,232,240,0.7)";
           ctx.fillText(text, n.x, ly + lh - 5);
         }
       });
 
       ctx.restore();
-      animId = requestAnimationFrame(tick);
+      // Skip frame when simulation is stable to save CPU
+      if (stableFramesRef.current > 120) {
+        animId = window.setTimeout(() => { animId = requestAnimationFrame(tick); }, 100) as unknown as number;
+      } else {
+        animId = requestAnimationFrame(tick);
+      }
     };
 
     tick();
-    return () => cancelAnimationFrame(animId);
+    return () => { cancelAnimationFrame(animId); clearTimeout(animId); };
   }, [
     renderedEdges,
     visibleNeighbors,
@@ -644,6 +671,15 @@ export default function GraphPage() {
     setSelectedNode(null);
   }, []);
 
+  const exportPNG = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = "graph-bangunai.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -808,6 +844,7 @@ export default function GraphPage() {
           <ControlBtn onClick={() => zoom(0.7)} title="Zoom out (-)"><ZoomOut size={15} /></ControlBtn>
           <ControlBtn onClick={fitToContent} title="Fit all (F)"><Focus size={15} /></ControlBtn>
           <ControlBtn onClick={resetView} title="Reset (0)"><RotateCcw size={15} /></ControlBtn>
+          <ControlBtn onClick={exportPNG} title="Export PNG"><Download size={15} /></ControlBtn>
           <span className="text-[10px] text-muted-foreground/40 ml-1 min-w-[32px] text-right">{Math.round(transform.scale * 100)}%</span>
         </div>
       </div>
@@ -1012,6 +1049,11 @@ export default function GraphPage() {
               {selectedPost.tags.map((tag) => (
                 <span key={tag} className="text-[9px] px-2 py-0.5 rounded-full bg-secondary/60 text-muted-foreground/50">{tag}</span>
               ))}
+            </div>
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground/50 mb-3">
+              <span>{connectedPosts.length} koneksi</span>
+              <span>·</span>
+              <span>{selectedPost.readingTime} min baca</span>
             </div>
             {connectedPosts.length > 0 && (
               <div className="border-t border-border/30 pt-2.5 mt-1">
