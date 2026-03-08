@@ -28,17 +28,17 @@ interface Edge {
 
 const DEFAULT_GRAPH_SETTINGS = {
   showLines: true,
-  alwaysShowLines: true,
+  alwaysShowLines: false,
   showArrows: false,
-  textFadeThreshold: 1.35,
+  textFadeThreshold: 1.8,
   nodeSizeScale: 0.95,
-  linkThicknessScale: 1.6,
+  linkThicknessScale: 1.3,
   isAnimating: true,
   centerForceScale: 1.05,
   repelForceScale: 1.1,
   linkForceScale: 0.85,
   linkDistance: 165,
-} as const;
+};
 
 export default function GraphPage() {
   const allTags = useMemo(
@@ -62,7 +62,7 @@ export default function GraphPage() {
   const [showKinds, setShowKinds] = useState<Record<GraphEdgeKind, boolean>>({
     direct: true,
     semantic: true,
-    category: true,
+    category: false,
   });
   const [showLines, setShowLines] = useState(DEFAULT_GRAPH_SETTINGS.showLines);
   const [alwaysShowLines, setAlwaysShowLines] = useState(DEFAULT_GRAPH_SETTINGS.alwaysShowLines);
@@ -78,12 +78,11 @@ export default function GraphPage() {
   const [repelForceScale, setRepelForceScale] = useState(DEFAULT_GRAPH_SETTINGS.repelForceScale);
   const [linkForceScale, setLinkForceScale] = useState(DEFAULT_GRAPH_SETTINGS.linkForceScale);
   const [linkDistance, setLinkDistance] = useState(DEFAULT_GRAPH_SETTINGS.linkDistance);
-  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const [zoomDisplay, setZoomDisplay] = useState(100);
   const [dragging, setDragging] = useState<{ type: "pan" | "node"; nodeId?: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const [pinVersion, setPinVersion] = useState(0);
 
-  const transformRef = useRef(transform);
-  transformRef.current = transform;
+  const transformRef = useRef({ x: 0, y: 0, scale: 1 });
   const draggingRef = useRef(dragging);
   draggingRef.current = dragging;
   const hoveredRef = useRef(hoveredNode);
@@ -317,6 +316,19 @@ export default function GraphPage() {
         const s = nodeById.get(e.source);
         const t2 = nodeById.get(e.target);
         if (!s || !t2) return;
+
+        // Viewport culling - skip edges where both nodes are off-screen
+        const pad = 100;
+        const screenW = W;
+        const screenH = H;
+        const toScreenX = (wx: number) => wx * t.scale + W / 2 + t.x;
+        const toScreenY = (wy: number) => wy * t.scale + H / 2 + t.y;
+        const sx = toScreenX(s.x), sy = toScreenY(s.y);
+        const tx = toScreenX(t2.x), ty = toScreenY(t2.y);
+        const sOff = sx < -pad || sx > screenW + pad || sy < -pad || sy > screenH + pad;
+        const tOff = tx < -pad || tx > screenW + pad || ty < -pad || ty > screenH + pad;
+        if (sOff && tOff) return;
+
         const isActive = activeNode && (e.source === activeNode || e.target === activeNode);
         const dimmed = activeNode && !isActive;
         const thicknessBoost = Math.pow(linkThicknessScale, 1.35);
@@ -517,7 +529,7 @@ export default function GraphPage() {
         if (Math.abs(e.clientX - d.startX) > 2 || Math.abs(e.clientY - d.startY) > 2) {
           dragMovedRef.current = true;
         }
-        setTransform((prev) => ({ ...prev, x: d.origX + (e.clientX - d.startX), y: d.origY + (e.clientY - d.startY) }));
+        transformRef.current = { ...transformRef.current, x: d.origX + (e.clientX - d.startX), y: d.origY + (e.clientY - d.startY) };
       } else if (d.type === "node" && d.nodeId) {
         const ns = nodesRef.current;
         const node = ns.find((n) => n.id === d.nodeId);
@@ -588,18 +600,16 @@ export default function GraphPage() {
     const W = sizeRef.current.w;
     const H = sizeRef.current.h;
     const delta = e.deltaY > 0 ? 0.92 : 1.08;
-    
-    setTransform((prev) => {
-      const newScale = Math.max(0.15, Math.min(5, prev.scale * delta));
-      // Zoom toward cursor position
-      const worldX = (mx - W / 2 - prev.x) / prev.scale;
-      const worldY = (my - H / 2 - prev.y) / prev.scale;
-      return {
-        x: mx - W / 2 - worldX * newScale,
-        y: my - H / 2 - worldY * newScale,
-        scale: newScale,
-      };
-    });
+    const t = transformRef.current;
+    const newScale = Math.max(0.15, Math.min(5, t.scale * delta));
+    const worldX = (mx - W / 2 - t.x) / t.scale;
+    const worldY = (my - H / 2 - t.y) / t.scale;
+    transformRef.current = {
+      x: mx - W / 2 - worldX * newScale,
+      y: my - H / 2 - worldY * newScale,
+      scale: newScale,
+    };
+    setZoomDisplay(Math.round(newScale * 100));
   }, []);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -619,10 +629,9 @@ export default function GraphPage() {
       const dist = Math.sqrt(dx * dx + dy * dy);
       const scale = dist / lastTouchDist.current;
       lastTouchDist.current = dist;
-      setTransform((prev) => ({
-        ...prev,
-        scale: Math.max(0.15, Math.min(5, prev.scale * scale)),
-      }));
+      const newScale = Math.max(0.15, Math.min(5, transformRef.current.scale * scale));
+      transformRef.current = { ...transformRef.current, scale: newScale };
+      setZoomDisplay(Math.round(newScale * 100));
     }
   }, []);
 
@@ -631,10 +640,10 @@ export default function GraphPage() {
   }, []);
 
   const zoom = useCallback((factor: number) => {
-    setTransform((prev) => {
-      const newScale = Math.max(0.15, Math.min(5, prev.scale * factor));
-      return { ...prev, scale: newScale };
-    });
+    const t = transformRef.current;
+    const newScale = Math.max(0.15, Math.min(5, t.scale * factor));
+    transformRef.current = { ...t, scale: newScale };
+    setZoomDisplay(Math.round(newScale * 100));
   }, []);
 
   const resetView = useCallback(() => {
@@ -642,7 +651,8 @@ export default function GraphPage() {
       n.pinned = false;
     });
     setPinVersion((v) => v + 1);
-    setTransform({ x: 0, y: 0, scale: 1 });
+    transformRef.current = { x: 0, y: 0, scale: 1 };
+    setZoomDisplay(100);
     setSelectedNode(null);
   }, []);
 
@@ -663,11 +673,12 @@ export default function GraphPage() {
     const scale = Math.min(w / contentW, h / contentH, 2.5);
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
-    setTransform({
+    transformRef.current = {
       x: -centerX * scale,
       y: -centerY * scale,
       scale,
-    });
+    };
+    setZoomDisplay(Math.round(scale * 100));
     setSelectedNode(null);
   }, []);
 
@@ -729,7 +740,7 @@ export default function GraphPage() {
     setSelectedTag("all");
     setActiveTypes(["note", "essay", "article"]);
     setActiveCategories([]);
-    setShowKinds({ direct: true, semantic: true, category: true });
+    setShowKinds({ direct: true, semantic: true, category: false });
     setShowLines(DEFAULT_GRAPH_SETTINGS.showLines);
     setAlwaysShowLines(DEFAULT_GRAPH_SETTINGS.alwaysShowLines);
     setShowArrows(DEFAULT_GRAPH_SETTINGS.showArrows);
@@ -845,7 +856,7 @@ export default function GraphPage() {
           <ControlBtn onClick={fitToContent} title="Fit all (F)"><Focus size={15} /></ControlBtn>
           <ControlBtn onClick={resetView} title="Reset (0)"><RotateCcw size={15} /></ControlBtn>
           <ControlBtn onClick={exportPNG} title="Export PNG"><Download size={15} /></ControlBtn>
-          <span className="text-[10px] text-muted-foreground/40 ml-1 min-w-[32px] text-right">{Math.round(transform.scale * 100)}%</span>
+          <span className="text-[10px] text-muted-foreground/40 ml-1 min-w-[32px] text-right">{zoomDisplay}%</span>
         </div>
       </div>
 
@@ -890,7 +901,7 @@ export default function GraphPage() {
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <button
-                  onClick={() => setShowLines((v) => !v)}
+                  onClick={() => setShowLines((v: boolean) => !v)}
                   className={`px-2.5 py-1 rounded-md text-[10px] border transition-colors ${
                     showLines
                       ? "border-primary/40 bg-primary/15 text-primary"
@@ -900,7 +911,7 @@ export default function GraphPage() {
                   {showLines ? "Lines: ON" : "Lines: OFF"}
                 </button>
                 <button
-                  onClick={() => setAlwaysShowLines((v) => !v)}
+                  onClick={() => setAlwaysShowLines((v: boolean) => !v)}
                   disabled={!showLines}
                   className={`px-2.5 py-1 rounded-md text-[10px] border transition-colors ${
                     alwaysShowLines && showLines
@@ -960,7 +971,7 @@ export default function GraphPage() {
               {displayOpen && (
                 <div className="space-y-2">
                   <button
-                    onClick={() => setShowArrows((v) => !v)}
+                    onClick={() => setShowArrows((v: boolean) => !v)}
                     className={`px-2.5 py-1 rounded-md text-[10px] border transition-colors ${
                       showArrows
                         ? "border-primary/40 bg-primary/15 text-primary"
@@ -969,11 +980,11 @@ export default function GraphPage() {
                   >
                     Arrows {showArrows ? "ON" : "OFF"}
                   </button>
-                  <RangeField label="Text fade threshold" value={textFadeThreshold} min={0.6} max={2.2} step={0.1} onChange={setTextFadeThreshold} />
-                  <RangeField label="Node size" value={nodeSizeScale} min={0.7} max={1.8} step={0.05} onChange={setNodeSizeScale} />
-                  <RangeField label="Link thickness" value={linkThicknessScale} min={0.4} max={4} step={0.1} onChange={setLinkThicknessScale} />
+                  <RangeField label="Text fade threshold" value={textFadeThreshold} min={0.6} max={2.2} step={0.1} onChange={(v) => setTextFadeThreshold(v)} />
+                  <RangeField label="Node size" value={nodeSizeScale} min={0.7} max={1.8} step={0.05} onChange={(v) => setNodeSizeScale(v)} />
+                  <RangeField label="Link thickness" value={linkThicknessScale} min={0.4} max={4} step={0.1} onChange={(v) => setLinkThicknessScale(v)} />
                   <button
-                    onClick={() => setIsAnimating((v) => !v)}
+                    onClick={() => setIsAnimating((v: boolean) => !v)}
                     className={`w-full py-1.5 text-xs font-medium rounded-md transition-colors ${
                       isAnimating ? "bg-primary/20 text-primary hover:bg-primary/30" : "bg-secondary/60 text-muted-foreground hover:text-foreground"
                     }`}
@@ -987,10 +998,10 @@ export default function GraphPage() {
               <SectionHeader title="Forces" open={forcesOpen} onToggle={() => setForcesOpen((v) => !v)} />
               {forcesOpen && (
                 <div className="space-y-2">
-                  <RangeField label="Center force" value={centerForceScale} min={0} max={2} step={0.05} onChange={setCenterForceScale} />
-                  <RangeField label="Repel force" value={repelForceScale} min={0.2} max={3} step={0.05} onChange={setRepelForceScale} />
-                  <RangeField label="Link force" value={linkForceScale} min={0.2} max={3} step={0.05} onChange={setLinkForceScale} />
-                  <RangeField label="Link distance" value={linkDistance} min={80} max={260} step={1} onChange={setLinkDistance} />
+                  <RangeField label="Center force" value={centerForceScale} min={0} max={2} step={0.05} onChange={(v) => setCenterForceScale(v)} />
+                  <RangeField label="Repel force" value={repelForceScale} min={0.2} max={3} step={0.05} onChange={(v) => setRepelForceScale(v)} />
+                  <RangeField label="Link force" value={linkForceScale} min={0.2} max={3} step={0.05} onChange={(v) => setLinkForceScale(v)} />
+                  <RangeField label="Link distance" value={linkDistance} min={80} max={260} step={1} onChange={(v) => setLinkDistance(v)} />
                 </div>
               )}
             </div>
