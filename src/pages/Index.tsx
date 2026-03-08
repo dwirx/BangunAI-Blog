@@ -17,9 +17,17 @@ export default function Index() {
       <section className="container mx-auto px-6 pt-24 mb-20">
         <div className="flex items-center justify-between mb-8">
           <h2 className="font-heading text-2xl font-bold">Terbaru</h2>
-          <Link to="/writing" className="text-sm text-accent flex items-center gap-1 hover:opacity-80 transition-opacity">
-            Semua <ArrowRight size={14} />
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/writing" className="text-sm text-muted-foreground/60 hover:text-foreground transition-colors hidden sm:inline">
+              Writing
+            </Link>
+            <Link to="/artikel" className="text-sm text-muted-foreground/60 hover:text-foreground transition-colors hidden sm:inline">
+              Artikel
+            </Link>
+            <Link to="/semua" className="text-sm text-accent flex items-center gap-1 hover:opacity-80 transition-opacity">
+              Semua <ArrowRight size={14} />
+            </Link>
+          </div>
         </div>
         <div className="grid md:grid-cols-3 gap-5">
           {highlighted.map((post) => (
@@ -32,7 +40,7 @@ export default function Index() {
       <section className="container mx-auto px-6 mb-20">
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-heading text-2xl font-bold">Latest</h2>
-          <Link to="/writing" className="text-sm text-accent flex items-center gap-1 hover:opacity-80 transition-opacity">
+          <Link to="/semua" className="text-sm text-accent flex items-center gap-1 hover:opacity-80 transition-opacity">
             Semua <ArrowRight size={14} />
           </Link>
         </div>

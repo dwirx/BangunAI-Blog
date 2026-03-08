@@ -19,6 +19,7 @@ const Tags = lazy(() => import("./pages/Tags"));
 const Now = lazy(() => import("./pages/Now"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const GraphPage = lazy(() => import("./pages/GraphPage"));
+const AllPosts = lazy(() => import("./pages/AllPosts"));
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/now" element={<Now />} />
               <Route path="/tags" element={<Tags />} />
               <Route path="/graph" element={<GraphPage />} />
+              <Route path="/semua" element={<AllPosts />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
