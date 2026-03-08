@@ -35,10 +35,19 @@ export default function Articles() {
         </p>
       </div>
 
-      <div className="space-y-3 mb-10">
+      <div className="flex flex-wrap items-center gap-2 mb-10">
         <FilterChips options={categories} selected={catFilter} onSelect={setCatFilter} />
         {allTags.length > 0 && (
-          <FilterChips options={allTags} selected={tagFilter} onSelect={setTagFilter} allLabel="Semua Tag" />
+          <select
+            value={tagFilter ?? ""}
+            onChange={(e) => setTagFilter(e.target.value || null)}
+            className="px-3 py-2 text-sm rounded-full glass text-muted-foreground focus:outline-none focus:border-primary/50 bg-transparent"
+          >
+            <option value="">Semua Tag</option>
+            {allTags.map((tag) => (
+              <option key={tag} value={tag}>{tag}</option>
+            ))}
+          </select>
         )}
       </div>
 

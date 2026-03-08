@@ -31,12 +31,23 @@ export default function Writing() {
         </p>
       </div>
 
-      <div className="space-y-4 mb-10">
+      <div className="space-y-3 mb-10">
         <FilterChips options={typeOptions} selected={typeFilter} onSelect={setTypeFilter} />
-        <FilterChips options={categories} selected={catFilter} onSelect={setCatFilter} />
-        {allTags.length > 0 && (
-          <FilterChips options={allTags} selected={tagFilter} onSelect={setTagFilter} allLabel="Semua Tag" />
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterChips options={categories} selected={catFilter} onSelect={setCatFilter} />
+          {allTags.length > 0 && (
+            <select
+              value={tagFilter ?? ""}
+              onChange={(e) => setTagFilter(e.target.value || null)}
+              className="px-3 py-2 text-sm rounded-full glass text-muted-foreground focus:outline-none focus:border-primary/50 bg-transparent"
+            >
+              <option value="">Semua Tag</option>
+              {allTags.map((tag) => (
+                <option key={tag} value={tag}>{tag}</option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
 
       <div>
