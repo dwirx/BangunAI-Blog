@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { getArticlePosts, getArticleTags, categories } from "@/data/posts";
 import { ListCard } from "@/components/PostCard";
 import FilterChips from "@/components/FilterChips";
+import TagSelect from "@/components/TagSelect";
 
 export default function Articles() {
   const [catFilter, setCatFilter] = useState<string | null>(null);
@@ -37,18 +38,7 @@ export default function Articles() {
 
       <div className="flex flex-wrap items-center gap-2 mb-10">
         <FilterChips options={categories} selected={catFilter} onSelect={setCatFilter} />
-        {allTags.length > 0 && (
-          <select
-            value={tagFilter ?? ""}
-            onChange={(e) => setTagFilter(e.target.value || null)}
-            className="px-3 py-2 text-sm rounded-full glass text-muted-foreground focus:outline-none focus:border-primary/50 bg-transparent"
-          >
-            <option value="">Semua Tag</option>
-            {allTags.map((tag) => (
-              <option key={tag} value={tag}>{tag}</option>
-            ))}
-          </select>
-        )}
+        <TagSelect tags={allTags} selected={tagFilter} onSelect={setTagFilter} placeholder="Tag" />
       </div>
 
       {grouped.length === 0 ? (
