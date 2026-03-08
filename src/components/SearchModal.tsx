@@ -214,17 +214,26 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
             <div className="pb-4">
               {recent.length > 0 && (
                 <div className="px-4 pt-3 pb-2">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40 mb-2">Pencarian terakhir</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40">Pencarian terakhir</p>
+                    <button
+                      onClick={() => { localStorage.removeItem(RECENT_KEY); setRecent([]); }}
+                      className="text-[10px] text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                    >
+                      Hapus semua
+                    </button>
+                  </div>
                   <div className="flex flex-wrap gap-1.5">
                     {recent.map((r) => (
-                      <div key={r} className="flex items-center gap-1 rounded-lg bg-secondary/40 border border-border/30 px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground group">
+                      <div key={r} className="flex items-center gap-1 rounded-lg bg-secondary/40 border border-border/30 px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground group transition-colors">
                         <button onClick={() => setQuery(r)} className="flex items-center gap-1.5">
                           <Clock size={11} className="text-muted-foreground/40" />
                           {r}
                         </button>
                         <button
                           onClick={() => { removeRecent(r); setRecent(getRecent()); }}
-                          className="ml-1 text-muted-foreground/30 hover:text-muted-foreground transition-colors opacity-0 group-hover:opacity-100"
+                          className="ml-1 text-muted-foreground/30 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                          title="Hapus"
                         >
                           <X size={10} />
                         </button>
