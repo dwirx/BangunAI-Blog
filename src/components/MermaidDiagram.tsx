@@ -6,6 +6,10 @@ interface MermaidDiagramProps {
 
 let mermaidIdCounter = 0;
 
+export function normalizeMermaidLineBreaks(chart: string) {
+  return chart.replaceAll("\\n", "<br/>");
+}
+
 function extractFillColor(el: Element | null): string | null {
   if (!el) return null;
   const fillAttr = el.getAttribute("fill");
@@ -231,7 +235,7 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
   const idRef = useRef(`mermaid-${++mermaidIdCounter}-${Date.now()}`);
 
   const renderChart = useCallback(async () => {
-    const rawChart = chart.trim();
+    const rawChart = normalizeMermaidLineBreaks(chart.trim());
     if (!rawChart) {
       setSvgHtml("");
       setError("");
