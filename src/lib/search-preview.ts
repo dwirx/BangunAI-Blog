@@ -44,7 +44,7 @@ export function buildSearchExcerpt(text: string, query: string, maxLength = 130)
 
   const half = Math.floor(maxLength / 2);
   let start = Math.max(0, focusIndex - half);
-  let end = Math.min(cleanText.length, start + maxLength);
+  const end = Math.min(cleanText.length, start + maxLength);
 
   if (end - start < maxLength) {
     start = Math.max(0, end - maxLength);

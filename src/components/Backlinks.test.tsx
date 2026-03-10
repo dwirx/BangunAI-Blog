@@ -191,13 +191,29 @@ vi.mock("@/lib/graph-engine", () => ({
   })),
 }));
 
+function renderBacklinks(slug: string) {
+  return render(
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <Backlinks slug={slug} />
+    </MemoryRouter>
+  );
+}
+
 describe("Backlinks", () => {
-  it("renders compact grouped backlinks with quality badges and animated toggle", () => {
-    render(
-      <MemoryRouter>
-        <Backlinks slug="current-post" />
-      </MemoryRouter>
+  it("renders without React Router future-flag warnings", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    renderBacklinks("current-post");
+
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("React Router Future Flag Warning")
     );
+
+    warnSpy.mockRestore();
+  });
+
+  it("renders compact grouped backlinks with quality badges and animated toggle", () => {
+    renderBacklinks("current-post");
 
     const list = screen.getByTestId("backlinks-list");
     expect(list).toHaveClass("max-h-56");
@@ -230,11 +246,7 @@ describe("Backlinks", () => {
   });
 
   it("renders nothing when current post has no backlink neighbors", () => {
-    const { container } = render(
-      <MemoryRouter>
-        <Backlinks slug="missing-post" />
-      </MemoryRouter>
-    );
+    const { container } = renderBacklinks("missing-post");
 
     expect(container).toBeEmptyDOMElement();
   });
