@@ -31,7 +31,7 @@ export default function ReadDetail() {
 
   if (!item) {
     return (
-      <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-32 text-center">
+      <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-24 sm:pt-28 text-center">
         <p className="text-muted-foreground">Bacaan tidak ditemukan.</p>
         <BackLink to="/read" className="text-accent mt-4 inline-block">Kembali ke Read</BackLink>
       </div>
@@ -50,16 +50,16 @@ export default function ReadDetail() {
     <>
       {item.hasBody && <div className="reading-progress" style={{ width: `${progress}%` }} />}
 
-      <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-24 pb-24 overflow-x-clip">
-        <div className="max-w-[68ch] w-full mx-auto mb-10">
+      <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-24 sm:pt-28 md:pt-32 pb-24 overflow-x-clip">
+        <div className="max-w-[68ch] w-full mx-auto mb-6">
           <BackLink to="/read" className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground/60 hover:text-foreground transition-colors">
             <ArrowLeft size={14} />
             Kembali ke Read
           </BackLink>
         </div>
 
-        <header className="max-w-[68ch] w-full mx-auto mb-14">
-          <h1 className="font-heading text-3xl md:text-[2.5rem] font-bold leading-[1.15] mb-5">{item.title}</h1>
+        <header className="max-w-[68ch] w-full mx-auto mb-10">
+          <h1 className="font-heading text-[clamp(2.05rem,4.7vw,3.1rem)] font-bold leading-[1.05] tracking-tight mb-4">{item.title}</h1>
           <div className="flex items-center gap-3 text-xs text-muted-foreground/50 mb-6">
             <span>{formatDateTime(item.date)}</span>
             <span>·</span>
