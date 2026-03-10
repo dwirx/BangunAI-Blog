@@ -2,6 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getDailyBySlug } from "@/content";
 import { mdxComponents } from "@/components/MdxComponents";
+import BackLink from "@/components/BackLink";
 import { ArrowLeft, Link as LinkIcon, Check } from "lucide-react";
 import TagLink from "@/components/TagLink";
 import TableOfContents from "@/components/TableOfContents";
@@ -41,9 +42,9 @@ export default function DailyDetail() {
     return (
       <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-32 text-center">
         <p className="text-muted-foreground">Daily note tidak ditemukan.</p>
-        <Link to="/daily" className="text-accent mt-4 inline-block">
+        <BackLink to="/daily" className="text-accent mt-4 inline-block">
           Kembali ke Daily
-        </Link>
+        </BackLink>
       </div>
     );
   }
@@ -62,13 +63,13 @@ export default function DailyDetail() {
 
       <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-24 pb-24 overflow-x-clip">
         <div className="max-w-[68ch] w-full mx-auto mb-10">
-          <Link
+          <BackLink
             to="/daily"
             className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground/60 hover:text-foreground transition-colors"
           >
             <ArrowLeft size={14} />
             Kembali ke Daily
-          </Link>
+          </BackLink>
         </div>
 
         <header className="max-w-[68ch] w-full mx-auto mb-14">

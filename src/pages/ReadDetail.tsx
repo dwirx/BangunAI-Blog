@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { formatDateTime } from "@/lib/date";
 import { getReadBySlug } from "@/content";
 import { mdxComponents } from "@/components/MdxComponents";
+import BackLink from "@/components/BackLink";
 import { ArrowLeft, ExternalLink, Link as LinkIcon, Check } from "lucide-react";
 import TagLink from "@/components/TagLink";
 import TableOfContents from "@/components/TableOfContents";
@@ -32,7 +33,7 @@ export default function ReadDetail() {
     return (
       <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-32 text-center">
         <p className="text-muted-foreground">Bacaan tidak ditemukan.</p>
-        <Link to="/read" className="text-accent mt-4 inline-block">Kembali ke Read</Link>
+        <BackLink to="/read" className="text-accent mt-4 inline-block">Kembali ke Read</BackLink>
       </div>
     );
   }
@@ -51,10 +52,10 @@ export default function ReadDetail() {
 
       <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-24 pb-24 overflow-x-clip">
         <div className="max-w-[68ch] w-full mx-auto mb-10">
-          <Link to="/read" className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground/60 hover:text-foreground transition-colors">
+          <BackLink to="/read" className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground/60 hover:text-foreground transition-colors">
             <ArrowLeft size={14} />
             Kembali ke Read
-          </Link>
+          </BackLink>
         </div>
 
         <header className="max-w-[68ch] w-full mx-auto mb-14">

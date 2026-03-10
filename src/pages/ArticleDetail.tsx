@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { formatDateTime, formatDateShort } from "@/lib/date";
 import { getContentBySlug } from "@/content";
 import { getRelatedPosts, type RelatedPost } from "@/data/posts";
+import BackLink from "@/components/BackLink";
 import TypeBadge from "@/components/TypeBadge";
 import { mdxComponents } from "@/components/MdxComponents";
 import Backlinks from "@/components/Backlinks";
@@ -37,7 +38,7 @@ export default function ArticleDetail() {
     return (
       <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-32 text-center">
         <p className="text-muted-foreground">Tulisan tidak ditemukan.</p>
-        <Link to="/" className="text-accent mt-4 inline-block">Kembali ke Home</Link>
+        <BackLink to="/" className="text-accent mt-4 inline-block">Kembali ke Home</BackLink>
       </div>
     );
   }
@@ -59,10 +60,10 @@ export default function ArticleDetail() {
       <div className="mx-auto w-full max-w-[1080px] px-3 sm:px-5 lg:px-6 pt-24 pb-24 overflow-x-clip">
         {/* Back link */}
         <div className="max-w-[68ch] w-full mx-auto mb-10">
-          <Link to={backLink} className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground/60 hover:text-foreground transition-colors">
+          <BackLink to={backLink} className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground/60 hover:text-foreground transition-colors">
             <ArrowLeft size={14} />
             Kembali
-          </Link>
+          </BackLink>
         </div>
 
         {/* Header */}
