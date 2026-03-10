@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { normalizeMermaidLineBreaks } from "@/components/MermaidDiagram";
+import {
+  getMermaidThemeConfig,
+  getMermaidThemeMode,
+  normalizeMermaidLineBreaks,
+} from "@/components/MermaidDiagram";
 
 describe("normalizeMermaidLineBreaks", () => {
   it("converts escaped line breaks inside node labels into html breaks", () => {
@@ -22,5 +26,30 @@ describe("normalizeMermaidLineBreaks", () => {
     const chart = "flowchart TD\nA-->B";
 
     expect(normalizeMermaidLineBreaks(chart)).toBe(chart);
+  });
+});
+
+describe("getMermaidThemeMode", () => {
+  it("normalizes resolved theme values into light or dark", () => {
+    expect(getMermaidThemeMode("light")).toBe("light");
+    expect(getMermaidThemeMode("dark")).toBe("dark");
+    expect(getMermaidThemeMode(undefined)).toBe("dark");
+    expect(getMermaidThemeMode("system")).toBe("dark");
+  });
+});
+
+describe("getMermaidThemeConfig", () => {
+  it("uses the base theme so custom palettes control both light and dark rendering", () => {
+    expect(getMermaidThemeConfig("light").theme).toBe("base");
+    expect(getMermaidThemeConfig("dark").theme).toBe("base");
+  });
+
+  it("returns different palettes for light and dark mode", () => {
+    const light = getMermaidThemeConfig("light").themeVariables;
+    const dark = getMermaidThemeConfig("dark").themeVariables;
+
+    expect(light.primaryColor).not.toBe(dark.primaryColor);
+    expect(light.noteBkgColor).not.toBe(dark.noteBkgColor);
+    expect(dark.primaryTextColor).toBe("#F8F4EC");
   });
 });

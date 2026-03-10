@@ -1,13 +1,115 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 
 interface MermaidDiagramProps {
   chart: string;
 }
 
+type MermaidThemeMode = "light" | "dark";
+
 let mermaidIdCounter = 0;
+let mermaidModulePromise: Promise<(typeof import("mermaid"))["default"]> | null = null;
 
 export function normalizeMermaidLineBreaks(chart: string) {
   return chart.replaceAll("\\n", "<br/>");
+}
+
+export function getMermaidThemeMode(resolvedTheme?: string): MermaidThemeMode {
+  return resolvedTheme === "light" ? "light" : "dark";
+}
+
+export function getMermaidThemeConfig(mode: MermaidThemeMode) {
+  return {
+    startOnLoad: false as const,
+    securityLevel: "loose" as const,
+    suppressErrorRendering: true as const,
+    theme: "base" as const,
+    mindmap: {
+      padding: mode === "light" ? 22 : 24,
+      maxNodeWidth: 220,
+    },
+    themeVariables:
+      mode === "light"
+        ? {
+            primaryColor: "#F4E4D1",
+            primaryTextColor: "#1A1A2E",
+            primaryBorderColor: "#C4A882",
+            lineColor: "#8B7355",
+            secondaryColor: "#FBF6EF",
+            tertiaryColor: "#F0E4D4",
+            mainBkg: "#F8F2E8",
+            nodeBorder: "#C4A882",
+            clusterBkg: "#F7EFE3",
+            clusterBorder: "#C8AA7A",
+            textColor: "#1A1A2E",
+            titleColor: "#1A1A2E",
+            edgeLabelBackground: "#FFF9F2",
+            actorTextColor: "#1A1A2E",
+            actorBkg: "#F5E6D3",
+            actorBorder: "#C4A882",
+            signalColor: "#1A1A2E",
+            signalTextColor: "#1A1A2E",
+            labelTextColor: "#1A1A2E",
+            loopTextColor: "#6B5B4E",
+            noteBkgColor: "#FFF7ED",
+            noteTextColor: "#1A1A2E",
+            pieTitleTextColor: "#1A1A2E",
+            pieSectionTextColor: "#fff",
+            pieLegendTextColor: "#1A1A2E",
+            pie1: "#C4A882",
+            pie2: "#8B7355",
+            pie3: "#D4A574",
+            pie4: "#A0865E",
+            pie5: "#E8C9A0",
+            pie6: "#7A6548",
+            git0: "#E1D3BC",
+            gitBranchLabel0: "#1A1A2E",
+          }
+        : {
+            primaryColor: "#D6B887",
+            primaryTextColor: "#F8F4EC",
+            primaryBorderColor: "#B99362",
+            lineColor: "#BFA57F",
+            secondaryColor: "#1B2333",
+            tertiaryColor: "#141B2A",
+            mainBkg: "#0E1421",
+            nodeBorder: "#B99362",
+            clusterBkg: "#111A2A",
+            clusterBorder: "#8A744F",
+            textColor: "#F2E8D7",
+            titleColor: "#F5EBDC",
+            edgeLabelBackground: "#11192A",
+            actorTextColor: "#F5EBDC",
+            actorBkg: "#1A2234",
+            actorBorder: "#B99362",
+            signalColor: "#F2E8D7",
+            signalTextColor: "#F2E8D7",
+            labelTextColor: "#F2E8D7",
+            loopTextColor: "#D8BC8A",
+            noteBkgColor: "#1C2740",
+            noteTextColor: "#F5EBDC",
+            pieTitleTextColor: "#F5EBDC",
+            pieSectionTextColor: "#fff",
+            pieLegendTextColor: "#F5EBDC",
+            pie1: "#D8BC8A",
+            pie2: "#D4A574",
+            pie3: "#E8C9A0",
+            pie4: "#8B7355",
+            pie5: "#A0865E",
+            pie6: "#7A6548",
+            git0: "#3F527F",
+            gitBranchLabel0: "#F8FAFC",
+          },
+    fontFamily: "Space Grotesk, Inter, sans-serif",
+  };
+}
+
+async function loadMermaid() {
+  if (!mermaidModulePromise) {
+    mermaidModulePromise = import("mermaid").then((module) => module.default);
+  }
+
+  return mermaidModulePromise;
 }
 
 function extractFillColor(el: Element | null): string | null {
@@ -229,13 +331,17 @@ function applyNodeLabelContrast(svg: string) {
 }
 
 export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
+  const { resolvedTheme } = useTheme();
+  const mermaidThemeMode = getMermaidThemeMode(resolvedTheme);
   const [svgHtml, setSvgHtml] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const idRef = useRef(`mermaid-${++mermaidIdCounter}-${Date.now()}`);
+  const renderTokenRef = useRef(0);
 
-  const renderChart = useCallback(async () => {
+  useEffect(() => {
     const rawChart = normalizeMermaidLineBreaks(chart.trim());
+    const renderToken = ++renderTokenRef.current;
+
     if (!rawChart) {
       setSvgHtml("");
       setError("");
@@ -243,118 +349,47 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
       return;
     }
 
-    try {
-      setLoading(true);
-      setError("");
-      setSvgHtml("");
-      const mermaid = (await import("mermaid")).default;
-      const isLight = document.documentElement.classList.contains("light");
+    let cancelled = false;
 
-      mermaid.initialize({
-        startOnLoad: false,
-        securityLevel: "loose",
-        suppressErrorRendering: true,
-        theme: isLight ? "default" : "dark",
-        mindmap: {
-          padding: isLight ? 22 : 24,
-          maxNodeWidth: 220,
-        },
-        themeVariables: isLight
-          ? {
-              primaryColor: "#F5E6D3",
-              primaryTextColor: "#1A1A2E",
-              primaryBorderColor: "#C4A882",
-              lineColor: "#8B7355",
-              secondaryColor: "#FAF5EE",
-              tertiaryColor: "#F0E4D4",
-              mainBkg: "#F5E6D3",
-              nodeBorder: "#C4A882",
-              titleColor: "#1A1A2E",
-              edgeLabelBackground: "#FAF5EE",
-              actorTextColor: "#1A1A2E",
-              actorBkg: "#F5E6D3",
-              actorBorder: "#C4A882",
-              signalColor: "#1A1A2E",
-              signalTextColor: "#1A1A2E",
-              labelTextColor: "#1A1A2E",
-              loopTextColor: "#6B5B4E",
-              noteBkgColor: "#FAF5EE",
-              noteTextColor: "#1A1A2E",
-              pieTitleTextColor: "#1A1A2E",
-              pieSectionTextColor: "#fff",
-              pieLegendTextColor: "#1A1A2E",
-              pie1: "#C4A882",
-              pie2: "#8B7355",
-              pie3: "#D4A574",
-              pie4: "#A0865E",
-              pie5: "#E8C9A0",
-              pie6: "#7A6548",
-              git0: "#E1D3BC",
-              gitBranchLabel0: "#1A1A2E",
-            }
-          : {
-              primaryColor: "#D8BC8A",
-              primaryTextColor: "#1A1712",
-              primaryBorderColor: "#B99362",
-              lineColor: "#BFA57F",
-              secondaryColor: "#1A2234",
-              tertiaryColor: "#131A29",
-              mainBkg: "#0F1422",
-              nodeBorder: "#B99362",
-              clusterBkg: "#11192A",
-              clusterBorder: "#8A744F",
-              textColor: "#F2E8D7",
-              titleColor: "#F5EBDC",
-              edgeLabelBackground: "#0F1422",
-              actorTextColor: "#F5EBDC",
-              actorBkg: "#1A2234",
-              actorBorder: "#B99362",
-              signalColor: "#F2E8D7",
-              signalTextColor: "#F2E8D7",
-              labelTextColor: "#F2E8D7",
-              loopTextColor: "#D8BC8A",
-              noteBkgColor: "#1A2234",
-              noteTextColor: "#F5EBDC",
-              pieTitleTextColor: "#F5EBDC",
-              pieSectionTextColor: "#fff",
-              pieLegendTextColor: "#F5EBDC",
-              pie1: "#D8BC8A",
-              pie2: "#D4A574",
-              pie3: "#E8C9A0",
-              pie4: "#8B7355",
-              pie5: "#A0865E",
-              pie6: "#7A6548",
-              git0: "#3F527F",
-              gitBranchLabel0: "#F8FAFC",
-            },
-        fontFamily: "Space Grotesk, Inter, sans-serif",
-      });
+    const renderChart = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        setSvgHtml("");
 
-      const uniqueId = `mermaid-${++mermaidIdCounter}-${Date.now()}`;
-      idRef.current = uniqueId;
-      const { svg } = await mermaid.render(uniqueId, rawChart);
-      const normalizedSvg = applyNodeLabelContrast(svg);
-      setSvgHtml(normalizedSvg);
-    } catch (e: unknown) {
-      console.error("Mermaid render error:", e);
-      const message = e instanceof Error ? e.message : String(e);
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [chart]);
+        const mermaid = await loadMermaid();
+        mermaid.initialize(getMermaidThemeConfig(mermaidThemeMode));
 
-  useEffect(() => {
-    renderChart();
+        const uniqueId = `mermaid-${++mermaidIdCounter}-${Date.now()}`;
+        const { svg } = await mermaid.render(uniqueId, rawChart);
+        const normalizedSvg = applyNodeLabelContrast(svg);
 
-    const observer = new MutationObserver(() => renderChart());
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
+        if (cancelled || renderToken !== renderTokenRef.current) {
+          return;
+        }
 
-    return () => observer.disconnect();
-  }, [renderChart]);
+        setSvgHtml(normalizedSvg);
+      } catch (e: unknown) {
+        if (cancelled || renderToken !== renderTokenRef.current) {
+          return;
+        }
+
+        console.error("Mermaid render error:", e);
+        const message = e instanceof Error ? e.message : String(e);
+        setError(message);
+      } finally {
+        if (!cancelled && renderToken === renderTokenRef.current) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void renderChart();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [chart, mermaidThemeMode]);
 
   if (error) {
     return (
@@ -371,15 +406,15 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
   }
 
   return (
-    <div className="mermaid-container my-8 overflow-x-auto rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm p-6">
+    <div className="mermaid-container my-8 overflow-x-auto rounded-[28px] border border-border/60 bg-card/50 p-5 shadow-[0_28px_90px_-52px_rgba(15,23,42,0.75)] backdrop-blur-md sm:p-6">
       {loading && !svgHtml ? (
-        <div className="flex flex-col items-center gap-2 py-4">
+        <div className="flex min-h-[140px] flex-col items-center justify-center gap-2 py-4">
           <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           <span className="text-xs text-muted-foreground/50">Loading diagram...</span>
         </div>
       ) : (
         <div
-          className="flex justify-center"
+          className="flex min-w-max justify-center"
           dangerouslySetInnerHTML={{ __html: svgHtml }}
         />
       )}

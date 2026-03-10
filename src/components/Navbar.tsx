@@ -20,6 +20,8 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const location = useLocation();
+  const isActiveLink = (to: string) =>
+    location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -47,34 +49,43 @@ export default function Navbar() {
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
-            ? "bg-background/80 backdrop-blur-md border-b border-border/50 py-2"
-            : "py-4"
+            ? "py-3"
+            : "py-4 sm:py-5"
         }`}
       >
         <div className="mx-auto w-full max-w-[1080px] flex items-center justify-between px-3 sm:px-5 lg:px-6">
-          <Link to="/" className="flex items-center gap-2 font-heading text-base font-semibold tracking-tight text-foreground">
-            <img src="/favicon.png" alt="BangunAI" className="w-6 h-6 rounded" />
-            BangunAI
+          <Link
+            to="/"
+            className="group flex items-center gap-3 rounded-full border border-border/65 bg-background/55 px-3 py-2 text-base font-semibold tracking-tight text-foreground shadow-[0_18px_44px_-34px_rgba(15,23,42,0.72)] backdrop-blur-xl transition-all duration-300 hover:border-primary/35 hover:bg-background/72"
+          >
+            <img src="/favicon.png" alt="BangunAI" className="h-8 w-8 rounded-full ring-1 ring-border/60" />
+            <span className="flex flex-col leading-none">
+              <span className="font-heading text-[15px]">BangunAI</span>
+              <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground/65 transition-colors group-hover:text-muted-foreground">
+                Notes and ideas
+              </span>
+            </span>
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="glass-nav hidden items-center gap-1 rounded-full border border-border/65 px-2 py-1.5 shadow-[0_24px_70px_-44px_rgba(15,23,42,0.82)] md:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`text-xs tracking-wide uppercase font-medium transition-colors hover:text-foreground ${
-                  location.pathname === link.to || (link.to !== "/" && location.pathname.startsWith(link.to))
-                    ? "text-foreground"
-                    : "text-muted-foreground/70"
+                className={`rounded-full px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] transition-all ${
+                  isActiveLink(link.to)
+                    ? "bg-primary/16 text-foreground shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)]"
+                    : "text-muted-foreground/72 hover:bg-secondary/72 hover:text-foreground"
                 }`}
               >
                 {link.label}
               </Link>
             ))}
             <button
+              type="button"
               onClick={() => setSearchOpen(true)}
-              className="ml-2 p-1.5 rounded-md text-muted-foreground/70 hover:text-foreground transition-colors"
+              className="ml-1 rounded-full border border-transparent p-2 text-muted-foreground/72 transition-all hover:border-border/70 hover:bg-secondary/72 hover:text-foreground"
               aria-label="Search"
             >
               <Search size={14} />
@@ -83,25 +94,37 @@ export default function Navbar() {
           </div>
 
           {/* Mobile */}
-          <div className="flex md:hidden items-center gap-1">
+          <div className="glass-nav flex items-center gap-1 rounded-full border border-border/65 px-1.5 py-1.5 shadow-[0_18px_44px_-32px_rgba(15,23,42,0.72)] md:hidden">
             <ThemeToggle />
-            <button className="p-1.5 text-muted-foreground" onClick={() => setSearchOpen(true)}>
+            <button
+              type="button"
+              className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Search"
+            >
               <Search size={16} />
             </button>
-            <button className="p-1.5 text-muted-foreground" onClick={() => setMobileOpen(!mobileOpen)}>
+            <button
+              type="button"
+              className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            >
               {mobileOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
         </div>
 
         {mobileOpen && (
-          <div className="md:hidden bg-background/95 backdrop-blur-md border-t border-border/50 py-3 px-3 sm:px-5 space-y-1">
+          <div className="mx-3 mt-3 space-y-1 rounded-[28px] border border-border/65 bg-background/88 p-2 shadow-[0_28px_80px_-50px_rgba(15,23,42,0.8)] backdrop-blur-xl sm:mx-5 md:hidden">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`block text-xs tracking-wide uppercase font-medium py-2 ${
-                  location.pathname === link.to ? "text-foreground" : "text-muted-foreground"
+                className={`block rounded-2xl px-3 py-3 text-xs font-medium uppercase tracking-[0.18em] transition-colors ${
+                  isActiveLink(link.to)
+                    ? "bg-primary/16 text-foreground"
+                    : "text-muted-foreground hover:bg-secondary/72 hover:text-foreground"
                 }`}
               >
                 {link.label}

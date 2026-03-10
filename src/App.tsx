@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import Layout from "@/components/Layout";
+import ThemeProvider from "@/components/ThemeProvider";
 
 const Index = lazy(() => import("./pages/Index"));
 const Writing = lazy(() => import("./pages/Writing"));
@@ -32,35 +33,37 @@ function PageLoader() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/" element={<Index />} />
-              <Route path="/writing" element={<Writing />} />
-              <Route path="/writing/:slug" element={<ArticleDetail />} />
-              <Route path="/artikel" element={<Articles />} />
-              <Route path="/artikel/:slug" element={<ArticleDetail />} />
-              <Route path="/read" element={<Read />} />
-              <Route path="/read/:slug" element={<ReadDetail />} />
-              <Route path="/daily" element={<Daily />} />
-              <Route path="/daily/:slug" element={<DailyDetail />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/now" element={<Now />} />
-              <Route path="/tags" element={<Tags />} />
-              <Route path="/graph" element={<GraphPage />} />
-              <Route path="/semua" element={<AllPosts />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route element={<Layout />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/writing" element={<Writing />} />
+                <Route path="/writing/:slug" element={<ArticleDetail />} />
+                <Route path="/artikel" element={<Articles />} />
+                <Route path="/artikel/:slug" element={<ArticleDetail />} />
+                <Route path="/read" element={<Read />} />
+                <Route path="/read/:slug" element={<ReadDetail />} />
+                <Route path="/daily" element={<Daily />} />
+                <Route path="/daily/:slug" element={<DailyDetail />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/now" element={<Now />} />
+                <Route path="/tags" element={<Tags />} />
+                <Route path="/graph" element={<GraphPage />} />
+                <Route path="/semua" element={<AllPosts />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;
