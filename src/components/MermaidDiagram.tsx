@@ -9,6 +9,7 @@ type MermaidThemeMode = "light" | "dark";
 
 let mermaidIdCounter = 0;
 let mermaidModulePromise: Promise<(typeof import("mermaid"))["default"]> | null = null;
+let initializedMermaidMode: MermaidThemeMode | null = null;
 
 export function normalizeMermaidLineBreaks(chart: string) {
   return chart.replaceAll("\\n", "<br/>");
@@ -104,12 +105,27 @@ export function getMermaidThemeConfig(mode: MermaidThemeMode) {
   };
 }
 
+export function shouldRenderMermaidDiagram(isInView: boolean, hasRenderedOnce: boolean) {
+  return isInView || hasRenderedOnce;
+}
+
 async function loadMermaid() {
   if (!mermaidModulePromise) {
     mermaidModulePromise = import("mermaid").then((module) => module.default);
   }
 
   return mermaidModulePromise;
+}
+
+async function getConfiguredMermaid(mode: MermaidThemeMode) {
+  const mermaid = await loadMermaid();
+
+  if (initializedMermaidMode !== mode) {
+    mermaid.initialize(getMermaidThemeConfig(mode));
+    initializedMermaidMode = mode;
+  }
+
+  return mermaid;
 }
 
 function extractFillColor(el: Element | null): string | null {
@@ -333,18 +349,54 @@ function applyNodeLabelContrast(svg: string) {
 export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
   const { resolvedTheme } = useTheme();
   const mermaidThemeMode = getMermaidThemeMode(resolvedTheme);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [svgHtml, setSvgHtml] = useState<string>("");
   const [error, setError] = useState<string>("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [isInView, setIsInView] = useState(false);
+  const [hasRenderedOnce, setHasRenderedOnce] = useState(false);
   const renderTokenRef = useRef(0);
+  const rawChart = normalizeMermaidLineBreaks(chart.trim());
+  const canRender = shouldRenderMermaidDiagram(isInView, hasRenderedOnce);
 
   useEffect(() => {
-    const rawChart = normalizeMermaidLineBreaks(chart.trim());
+    if (canRender) {
+      return;
+    }
+
+    const node = containerRef.current;
+    if (!node || typeof window === "undefined" || !("IntersectionObserver" in window)) {
+      setIsInView(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setIsInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "280px 0px" }
+    );
+
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [canRender]);
+
+  useEffect(() => {
     const renderToken = ++renderTokenRef.current;
 
     if (!rawChart) {
       setSvgHtml("");
       setError("");
+      setLoading(false);
+      setHasRenderedOnce(false);
+      return;
+    }
+
+    if (!canRender) {
       setLoading(false);
       return;
     }
@@ -355,10 +407,8 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
       try {
         setLoading(true);
         setError("");
-        setSvgHtml("");
 
-        const mermaid = await loadMermaid();
-        mermaid.initialize(getMermaidThemeConfig(mermaidThemeMode));
+        const mermaid = await getConfiguredMermaid(mermaidThemeMode);
 
         const uniqueId = `mermaid-${++mermaidIdCounter}-${Date.now()}`;
         const { svg } = await mermaid.render(uniqueId, rawChart);
@@ -369,6 +419,7 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
         }
 
         setSvgHtml(normalizedSvg);
+        setHasRenderedOnce(true);
       } catch (e: unknown) {
         if (cancelled || renderToken !== renderTokenRef.current) {
           return;
@@ -389,9 +440,9 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
     return () => {
       cancelled = true;
     };
-  }, [chart, mermaidThemeMode]);
+  }, [canRender, mermaidThemeMode, rawChart]);
 
-  if (error) {
+  if (error && !svgHtml) {
     return (
       <div className="my-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
         <p className="text-xs font-medium text-amber-300">Diagram tidak dapat ditampilkan.</p>
@@ -406,18 +457,56 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
   }
 
   return (
-    <div className="mermaid-container my-8 overflow-x-auto rounded-[28px] border border-border/60 bg-card/50 p-5 shadow-[0_28px_90px_-52px_rgba(15,23,42,0.75)] backdrop-blur-md sm:p-6">
-      {loading && !svgHtml ? (
-        <div className="flex min-h-[140px] flex-col items-center justify-center gap-2 py-4">
-          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs text-muted-foreground/50">Loading diagram...</span>
+    <div ref={containerRef} className="my-8">
+      <div className="mermaid-container overflow-hidden rounded-[30px] border border-border/60 bg-card/50 p-4 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.7)] backdrop-blur-md sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-3 border-b border-border/45 pb-3">
+          <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/62">
+            <span className="h-2 w-2 rounded-full bg-primary/70" />
+            Mermaid
+          </span>
+          <span className="rounded-full border border-border/55 bg-background/55 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/68">
+            {loading ? "Rendering" : canRender ? "Ready" : "On demand"}
+          </span>
         </div>
-      ) : (
-        <div
-          className="flex min-w-max justify-center"
-          dangerouslySetInnerHTML={{ __html: svgHtml }}
-        />
-      )}
+
+        <div className="mermaid-stage relative overflow-x-auto rounded-[22px] border border-border/45 px-3 py-4 sm:px-4 sm:py-5">
+          {!canRender && !svgHtml ? (
+            <div className="flex min-h-[160px] flex-col items-center justify-center gap-3 py-6 text-center">
+              <div className="h-10 w-10 rounded-full border border-border/60 bg-background/65" />
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground/68">
+                  Diagram menunggu viewport
+                </p>
+                <p className="max-w-xs text-sm text-muted-foreground/72">
+                  Render ditunda sampai diagram mendekati area baca supaya halaman tetap ringan.
+                </p>
+              </div>
+            </div>
+          ) : loading && !svgHtml ? (
+            <div className="flex min-h-[160px] flex-col items-center justify-center gap-2 py-6">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <span className="text-xs text-muted-foreground/55">Rendering diagram...</span>
+            </div>
+          ) : (
+            <div
+              className="flex min-w-max justify-center"
+              dangerouslySetInnerHTML={{ __html: svgHtml }}
+            />
+          )}
+
+          {loading && svgHtml ? (
+            <div className="pointer-events-none absolute right-3 top-3 rounded-full border border-border/60 bg-background/78 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/68 shadow-sm">
+              Memperbarui
+            </div>
+          ) : null}
+        </div>
+
+        {error ? (
+          <p className="mt-3 text-xs text-amber-300/85">
+            Render terakhir dipertahankan karena ada kendala saat memperbarui diagram.
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

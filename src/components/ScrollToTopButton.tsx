@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
 import { ArrowUp } from "lucide-react";
+import { createRafThrottle } from "@/lib/raf-throttle";
 
 export default function ScrollToTopButton() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setVisible(window.scrollY > 320);
+    const onScroll = createRafThrottle(() => {
+      const nextVisible = window.scrollY > 320;
+      setVisible((current) => (current === nextVisible ? current : nextVisible));
+    });
+
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      onScroll.cancel();
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
   const scrollToTop = () => {

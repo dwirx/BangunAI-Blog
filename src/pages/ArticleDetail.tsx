@@ -11,6 +11,7 @@ import TagLink from "@/components/TagLink";
 import GraphView from "@/components/GraphView";
 import TableOfContents from "@/components/TableOfContents";
 import { ArrowLeft, Link as LinkIcon, Check, Clock, Calendar } from "lucide-react";
+import { useReadingProgress } from "@/hooks/useReadingProgress";
 
 type MdxRendererProps = {
   components?: Record<string, React.ComponentType<Record<string, unknown>>>;
@@ -20,17 +21,8 @@ export default function ArticleDetail() {
   const { slug } = useParams<{ slug: string }>();
   const post = getContentBySlug(slug || "");
   const related = useMemo(() => getRelatedPosts(slug || "", 4), [slug]);
-  const [progress, setProgress] = useState(0);
+  const progress = useReadingProgress(Boolean(post));
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => {
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      if (docHeight > 0) setProgress((window.scrollY / docHeight) * 100);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   useEffect(() => { window.scrollTo(0, 0); }, [slug]);
 

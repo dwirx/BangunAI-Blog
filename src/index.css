@@ -453,10 +453,22 @@
   border-color: hsl(36 28% 36% / 0.45);
 }
 
+.mermaid-stage {
+  background:
+    radial-gradient(circle at top, hsl(var(--primary) / 0.08), transparent 42%),
+    linear-gradient(180deg, hsl(var(--background) / 0.3), hsl(var(--background) / 0.12));
+}
+
 .light .mermaid-container {
   background:
     linear-gradient(155deg, hsl(38 54% 97% / 0.95), hsl(34 42% 92% / 0.96));
   border-color: hsl(33 28% 76% / 0.9);
+}
+
+.light .mermaid-stage {
+  background:
+    radial-gradient(circle at top, hsl(var(--primary) / 0.08), transparent 40%),
+    linear-gradient(180deg, hsl(38 48% 98% / 0.82), hsl(34 28% 94% / 0.78));
 }
 
 /* Guard: never show Mermaid built-in parse-error graphics in UI */
@@ -554,6 +566,8 @@ footer,
 .glass,
 .glass-nav,
 .glass-card,
+.mermaid-container,
+.mermaid-stage,
 .prose-article,
 .reading-progress {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;

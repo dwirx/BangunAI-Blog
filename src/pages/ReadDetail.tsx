@@ -7,6 +7,7 @@ import BackLink from "@/components/BackLink";
 import { ArrowLeft, ExternalLink, Link as LinkIcon, Check } from "lucide-react";
 import TagLink from "@/components/TagLink";
 import TableOfContents from "@/components/TableOfContents";
+import { useReadingProgress } from "@/hooks/useReadingProgress";
 
 type MdxRendererProps = {
   components?: Record<string, React.ComponentType<Record<string, unknown>>>;
@@ -15,17 +16,8 @@ type MdxRendererProps = {
 export default function ReadDetail() {
   const { slug } = useParams<{ slug: string }>();
   const item = getReadBySlug(slug || "");
-  const [progress, setProgress] = useState(0);
+  const progress = useReadingProgress(Boolean(item?.hasBody));
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => {
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      if (docHeight > 0) setProgress((window.scrollY / docHeight) * 100);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   useEffect(() => { window.scrollTo(0, 0); }, [slug]);
 

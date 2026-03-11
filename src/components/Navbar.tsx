@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Search, Menu, X } from "lucide-react";
+import { createRafThrottle } from "@/lib/raf-throttle";
 import SearchModal from "./SearchModal";
 import ThemeToggle from "./ThemeToggle";
 
@@ -24,9 +25,18 @@ export default function Navbar() {
     location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
+    const onScroll = createRafThrottle(() => {
+      const nextScrolled = window.scrollY > 10;
+      setScrolled((current) => (current === nextScrolled ? current : nextScrolled));
+    });
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      onScroll.cancel();
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
   useEffect(() => setMobileOpen(false), [location]);

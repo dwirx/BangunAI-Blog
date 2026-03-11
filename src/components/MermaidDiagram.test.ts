@@ -3,6 +3,7 @@ import {
   getMermaidThemeConfig,
   getMermaidThemeMode,
   normalizeMermaidLineBreaks,
+  shouldRenderMermaidDiagram,
 } from "@/components/MermaidDiagram";
 
 describe("normalizeMermaidLineBreaks", () => {
@@ -51,5 +52,16 @@ describe("getMermaidThemeConfig", () => {
     expect(light.primaryColor).not.toBe(dark.primaryColor);
     expect(light.noteBkgColor).not.toBe(dark.noteBkgColor);
     expect(dark.primaryTextColor).toBe("#F8F4EC");
+  });
+});
+
+describe("shouldRenderMermaidDiagram", () => {
+  it("defers first render until the diagram enters the viewport", () => {
+    expect(shouldRenderMermaidDiagram(false, false)).toBe(false);
+  });
+
+  it("keeps the diagram eligible for rerender after it has rendered once", () => {
+    expect(shouldRenderMermaidDiagram(false, true)).toBe(true);
+    expect(shouldRenderMermaidDiagram(true, false)).toBe(true);
   });
 });
