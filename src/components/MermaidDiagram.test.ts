@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  collectMermaidNodeColorMap,
   getMermaidThemeConfig,
   getMermaidThemeMode,
   normalizeMermaidLineBreaks,
+  pickReadableNodeTextColor,
   shouldRenderMermaidDiagram,
 } from "@/components/MermaidDiagram";
 
@@ -63,5 +65,37 @@ describe("shouldRenderMermaidDiagram", () => {
   it("keeps the diagram eligible for rerender after it has rendered once", () => {
     expect(shouldRenderMermaidDiagram(false, true)).toBe(true);
     expect(shouldRenderMermaidDiagram(true, false)).toBe(true);
+  });
+});
+
+describe("collectMermaidNodeColorMap", () => {
+  it("reads node fill and text colors from id-based Mermaid style rules", () => {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <style>
+          #flowchart-G-0 > rect { fill: #1a3a6b; stroke: #1a3a6b; }
+          #flowchart-G-0 .label { color: #fff; }
+          #flowchart-H-1 rect { fill: #2d5a27; }
+          #flowchart-H-1 .nodeLabel { color: #ffffff; }
+        </style>
+      </svg>
+    `;
+
+    const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+    const colorMap = collectMermaidNodeColorMap(doc);
+
+    expect(colorMap.get("flowchart-G-0")).toEqual({ fill: "#1a3a6b", text: "#fff" });
+    expect(colorMap.get("flowchart-H-1")).toEqual({ fill: "#2d5a27", text: "#ffffff" });
+  });
+});
+
+describe("pickReadableNodeTextColor", () => {
+  it("prefers explicit text color from Mermaid node styling before computing contrast", () => {
+    expect(pickReadableNodeTextColor("#1a3a6b", "#fff")).toBe("#fff");
+  });
+
+  it("falls back to contrast-based text color when Mermaid does not provide one", () => {
+    expect(pickReadableNodeTextColor("#1a3a6b")).toBe("#f8fafc");
+    expect(pickReadableNodeTextColor("#f4e4d1")).toBe("#111827");
   });
 });

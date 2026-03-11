@@ -38,6 +38,39 @@ function SectionHeader({
   );
 }
 
+function QuickAccessCard({
+  to,
+  label,
+  count,
+  description,
+}: {
+  to: string;
+  label: string;
+  count: number;
+  description: string;
+}) {
+  return (
+    <Link
+      to={to}
+      aria-label={label}
+      className="glass-card group block rounded-[24px] border border-border/65 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:bg-[hsl(var(--glass-bg-hover))]"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground/58">
+            {label}
+          </p>
+          <p className="mt-3 font-heading text-3xl font-bold">{count}</p>
+        </div>
+        <span className="rounded-full border border-border/55 bg-background/55 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/68 transition-colors group-hover:text-foreground">
+          Buka
+        </span>
+      </div>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
+    </Link>
+  );
+}
+
 export default function Index() {
   const latestPosts = getLatestPosts(7);
   const heroPost = latestPosts[0];
@@ -55,63 +88,59 @@ export default function Index() {
 
   return (
     <>
-      <section className="container mx-auto mb-20 px-6 pt-28 sm:pt-32 lg:pt-36">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.12fr)_minmax(19rem,0.88fr)] lg:items-end">
-          <div className="space-y-6">
+      <section className="container mx-auto mb-16 px-6 pt-28 sm:pt-32 lg:pt-36">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(19rem,1.2fr)] lg:items-start">
+          <div className="space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-border/65 bg-background/55 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground shadow-[0_18px_44px_-34px_rgba(15,23,42,0.72)] backdrop-blur-xl">
               <span className="h-2 w-2 rounded-full bg-primary/70" />
               BangunAI
               <span className="text-muted-foreground/45">notes and ideas</span>
             </div>
 
-            <div className="space-y-4">
-              <h1 className="font-heading text-[clamp(3rem,7vw,5.8rem)] font-bold leading-[0.94] tracking-tight">
-                Catatan yang tenang, diagram yang lebih jelas, dan ide yang bisa ditelusuri.
-              </h1>
-              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base md:text-lg">
-                Kumpulan tulisan reflektif, artikel teknis, daily notes, dan bacaan yang dirapikan
-                supaya enak dijelajahi dari halaman awal sampai halaman detail.
+            <div className="max-w-xl space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground/58">
+                Jelajah cepat
               </p>
+              <p className="text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
+                Pilih jalur baca yang kamu butuhkan, tanpa pembuka yang terlalu panjang.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+              <QuickAccessCard
+                to="/writing"
+                label="Writing"
+                count={writingCount}
+                description="Catatan dan essay yang terus bertambah."
+              />
+              <QuickAccessCard
+                to="/artikel"
+                label="Artikel"
+                count={articleCount}
+                description="Tulisan yang lebih padat dan terstruktur."
+              />
+              <QuickAccessCard
+                to="/daily"
+                label="Daily"
+                count={dailyNotes.length}
+                description="Potongan ide singkat yang tetap bisa dicari lagi."
+              />
             </div>
 
             <div className="flex flex-wrap gap-3">
               <Link
-                to={heroLink}
+                to="/semua"
                 className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-transform hover:-translate-y-0.5"
               >
-                Mulai dari terbaru
+                Lihat terbaru
                 <ArrowRight size={15} />
               </Link>
               <Link
                 to="/graph"
                 className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/45 px-4 py-2.5 text-sm text-foreground/88 backdrop-blur-xl transition-colors hover:border-primary/35 hover:text-foreground"
               >
-                Lihat graph
+                Buka graph
               </Link>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="glass-card rounded-[24px] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground/58">
-                  Writing
-                </p>
-                <p className="mt-3 font-heading text-3xl font-bold">{writingCount}</p>
-                <p className="mt-1 text-sm text-muted-foreground">Catatan dan essay yang terus bertambah.</p>
-              </div>
-              <div className="glass-card rounded-[24px] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground/58">
-                  Artikel
-                </p>
-                <p className="mt-3 font-heading text-3xl font-bold">{articleCount}</p>
-                <p className="mt-1 text-sm text-muted-foreground">Tulisan yang lebih padat dan terstruktur.</p>
-              </div>
-              <div className="glass-card rounded-[24px] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground/58">
-                  Daily
-                </p>
-                <p className="mt-3 font-heading text-3xl font-bold">{dailyNotes.length}</p>
-                <p className="mt-1 text-sm text-muted-foreground">Potongan ide singkat yang tetap bisa dicari lagi.</p>
-              </div>
             </div>
           </div>
 
@@ -120,9 +149,9 @@ export default function Index() {
               to={heroLink}
               className="glass-card group relative block overflow-hidden rounded-[30px] border border-border/65 p-0 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35"
             >
-              <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-br from-primary/20 via-accent/10 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-br from-primary/14 via-accent/8 to-transparent" />
               <div className="relative p-6 sm:p-7">
-                <div className="mb-6 flex items-center justify-between gap-3">
+                <div className="mb-5 flex items-center justify-between gap-3">
                   <span className="rounded-full border border-border/60 bg-background/55 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/68">
                     Spotlight
                   </span>
@@ -134,7 +163,7 @@ export default function Index() {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/52">
                   {heroPost.type === "article" ? "Artikel terbaru" : "Tulisan terbaru"}
                 </p>
-                <h2 className="mt-3 font-heading text-[clamp(1.85rem,4vw,2.5rem)] font-bold leading-tight tracking-tight group-hover:text-accent transition-colors">
+                <h2 className="mt-3 font-heading text-[clamp(1.7rem,3.7vw,2.35rem)] font-bold leading-tight tracking-tight transition-colors group-hover:text-accent">
                   {heroPost.title}
                 </h2>
                 <p className="mt-4 line-clamp-4 text-sm leading-relaxed text-muted-foreground sm:text-[15px]">

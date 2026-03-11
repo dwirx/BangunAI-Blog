@@ -6,6 +6,10 @@ interface MermaidDiagramProps {
 }
 
 type MermaidThemeMode = "light" | "dark";
+type MermaidNodeColors = {
+  fill?: string;
+  text?: string;
+};
 
 let mermaidIdCounter = 0;
 let mermaidModulePromise: Promise<(typeof import("mermaid"))["default"]> | null = null;
@@ -139,6 +143,11 @@ function extractFillColor(el: Element | null): string | null {
   return null;
 }
 
+function extractColorDeclaration(input: string, property: "fill" | "color") {
+  const value = input.match(new RegExp(`\\b${property}:\\s*([^;!}]+)`, "i"))?.[1]?.trim();
+  return value && value !== "none" ? value : null;
+}
+
 function collectCssFillMap(doc: Document) {
   const map = new Map<string, string>();
   const styleBlocks = doc.querySelectorAll("style");
@@ -162,6 +171,53 @@ function collectCssFillMap(doc: Document) {
   });
 
   return map;
+}
+
+export function collectMermaidNodeColorMap(doc: Document) {
+  const map = new Map<string, MermaidNodeColors>();
+  const styleBlocks = doc.querySelectorAll("style");
+
+  styleBlocks.forEach((styleEl) => {
+    const cssText = styleEl.textContent ?? "";
+    const ruleRegex = /#([a-zA-Z_][\w:-]*)[^{]*\{([^}]*)\}/g;
+
+    let match: RegExpExecArray | null;
+    while ((match = ruleRegex.exec(cssText)) !== null) {
+      const nodeId = match[1]?.trim();
+      const declarations = match[2] ?? "";
+      if (!nodeId) continue;
+
+      const fill = extractColorDeclaration(declarations, "fill");
+      const text = extractColorDeclaration(declarations, "color");
+      if (!fill && !text) continue;
+
+      const current = map.get(nodeId) ?? {};
+      map.set(nodeId, {
+        fill: fill ?? current.fill,
+        text: text ?? current.text,
+      });
+    }
+  });
+
+  return map;
+}
+
+function resolveNodeColors(group: Element, shape: Element | null, cssFillMap: Map<string, string>, nodeColorMap: Map<string, MermaidNodeColors>) {
+  const nodeIds = [group.getAttribute("id"), shape?.getAttribute("id")].filter(
+    (value): value is string => Boolean(value)
+  );
+
+  for (const nodeId of nodeIds) {
+    const colors = nodeColorMap.get(nodeId);
+    if (colors?.fill || colors?.text) {
+      return colors;
+    }
+  }
+
+  return {
+    fill: resolveNodeFill(group, shape, cssFillMap) ?? undefined,
+    text: undefined,
+  };
 }
 
 function resolveNodeFill(
@@ -234,6 +290,19 @@ function getLuminance([r, g, b]: [number, number, number]) {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 }
 
+export function pickReadableNodeTextColor(fill: string, explicitTextColor?: string | null) {
+  if (explicitTextColor) {
+    return explicitTextColor;
+  }
+
+  const rgb = parseColorToRgb(fill);
+  if (!rgb) {
+    return "#111827";
+  }
+
+  return getLuminance(rgb) > 0.62 ? "#111827" : "#f8fafc";
+}
+
 function estimateLabelWidth(text: string) {
   const normalized = text.trim();
   if (!normalized) return 0;
@@ -252,17 +321,18 @@ function applyNodeLabelContrast(svg: string) {
   }
 
   const cssFillMap = collectCssFillMap(doc);
+  const nodeColorMap = collectMermaidNodeColorMap(doc);
   const nodeGroups = doc.querySelectorAll("g.node");
   nodeGroups.forEach((group) => {
     const bg = group.querySelector("rect, polygon, ellipse, circle, path");
-    const fill = resolveNodeFill(group, bg, cssFillMap);
+    const { fill, text: explicitTextColor } = resolveNodeColors(group, bg, cssFillMap, nodeColorMap);
     if (!fill) return;
 
     const rgb = parseColorToRgb(fill);
     if (!rgb) return;
 
     const isLightBackground = getLuminance(rgb) > 0.62;
-    const textColor = isLightBackground ? "#111827" : "#f8fafc";
+    const textColor = pickReadableNodeTextColor(fill, explicitTextColor);
     const strokeColor = isLightBackground ? "rgba(255,255,255,.35)" : "rgba(0,0,0,.45)";
     const shadow = isLightBackground
       ? "0 1px 0 rgba(255,255,255,.45)"
