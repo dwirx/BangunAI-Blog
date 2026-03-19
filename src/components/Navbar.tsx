@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense, lazy } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Search, Menu, X } from "lucide-react";
-import SearchModal from "./SearchModal";
 import ThemeToggle from "./ThemeToggle";
+
+const SearchModal = lazy(() => import("./SearchModal"));
 
 const navLinks = [
   { label: "Writing", to: "/writing" },
@@ -111,7 +112,11 @@ export default function Navbar() {
         )}
       </nav>
 
-      <SearchModal open={searchOpen} onClose={closeSearch} />
+      {searchOpen && (
+        <Suspense fallback={null}>
+          <SearchModal open={searchOpen} onClose={closeSearch} />
+        </Suspense>
+      )}
     </>
   );
 }

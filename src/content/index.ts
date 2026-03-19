@@ -1,115 +1,127 @@
-// Auto-detect MDX content files using import.meta.glob
-// To add new content: just create a .mdx file in the appropriate folder!
-// Files are auto-detected — no manual imports needed.
-
-import type { ComponentType } from "react";
+import { lazy } from "react";
+import type { ComponentType, LazyExoticComponent } from "react";
 import type { Post, ReadItem, DailyNote } from "@/data/types";
+import {
+  writingMeta,
+  articleMeta,
+  readMeta,
+  dailyMeta,
+  aboutMeta,
+  nowMeta,
+} from "./content-index.generated";
 
 type MdxRendererProps = {
   components?: Record<string, ComponentType<Record<string, unknown>>>;
 };
+
+type RenderableMdxComponent =
+  | ComponentType<MdxRendererProps>
+  | LazyExoticComponent<ComponentType<MdxRendererProps>>;
 
 interface MdxModule {
   default: ComponentType<MdxRendererProps>;
   frontmatter: Record<string, unknown>;
 }
 
-function normalizeStringArray(value: unknown, fallback: string[] = []) {
-  if (!Array.isArray(value)) return [...fallback];
-  return value
-    .map((item) => String(item).trim())
-    .filter((item) => item.length > 0);
+const writingModules = import.meta.glob<MdxModule>("./writing/*.mdx");
+const articleModules = import.meta.glob<MdxModule>("./articles/*.mdx");
+const readModules = import.meta.glob<MdxModule>("./read/*.mdx");
+const dailyModules = import.meta.glob<MdxModule>("./daily/*.mdx");
+const aboutModules = import.meta.glob<MdxModule>("./about.mdx");
+const nowModules = import.meta.glob<MdxModule>("./now.mdx");
+
+const EMPTY_COMPONENT: ComponentType<MdxRendererProps> = () => null;
+const componentCache = new Map<string, RenderableMdxComponent>();
+
+function getLazyMdxComponent(path: string, loaders: Record<string, () => Promise<MdxModule>>) {
+  const cached = componentCache.get(path);
+  if (cached) return cached;
+
+  const loader = loaders[path];
+  if (!loader) return EMPTY_COMPONENT;
+
+  const lazyComponent = lazy(async () => {
+    const mod = await loader();
+    return { default: mod.default };
+  });
+  componentCache.set(path, lazyComponent);
+  return lazyComponent;
 }
 
-// Auto-import all MDX files
-const writingModules = import.meta.glob<MdxModule>("./writing/*.mdx", { eager: true });
-const articleModules = import.meta.glob<MdxModule>("./articles/*.mdx", { eager: true });
-const readModules = import.meta.glob<MdxModule>("./read/*.mdx", { eager: true });
-const dailyModules = import.meta.glob<MdxModule>("./daily/*.mdx", { eager: true });
-const aboutModule = import.meta.glob<MdxModule>("./about.mdx", { eager: true });
-const nowModule = import.meta.glob<MdxModule>("./now.mdx", { eager: true });
-
-// Convert MDX modules to Post objects
-function mdxToPost(mod: MdxModule): Post & { Component: ComponentType } {
-  const fm = mod.frontmatter;
+function toPostMeta(
+  item: (typeof writingMeta)[number] | (typeof articleMeta)[number],
+  loaders: Record<string, () => Promise<MdxModule>>
+): Post & { Component: RenderableMdxComponent } {
   return {
-    slug: fm.slug as string,
-    title: fm.title as string,
-    summary: fm.summary as string,
-    type: fm.type as Post["type"],
-    category: fm.category as Post["category"],
-    tags: normalizeStringArray(fm.tags),
-    date: fm.date as string,
-    readingTime: fm.readingTime as number,
-    featured: fm.featured as boolean | undefined,
-    Component: mod.default,
+    slug: item.slug,
+    title: item.title,
+    summary: item.summary,
+    type: item.type as Post["type"],
+    category: item.category as Post["category"],
+    tags: item.tags,
+    date: item.date,
+    readingTime: item.readingTime,
+    featured: item.featured,
+    Component: getLazyMdxComponent(item.path, loaders),
   };
 }
 
-function mdxToReadItem(mod: MdxModule): ReadItem & { Component: ComponentType } {
-  const fm = mod.frontmatter;
-  // Check if the MDX has actual body content (not just frontmatter)
-  const hasContent = mod.default.toString().length > 50;
+function toReadMeta(
+  item: (typeof readMeta)[number]
+): ReadItem & { Component: RenderableMdxComponent } {
   return {
-    slug: fm.slug as string,
-    title: fm.title as string,
-    snippet: fm.snippet as string,
-    source: fm.source as string,
-    url: fm.url as string,
-    tags: normalizeStringArray(fm.tags),
-    date: fm.date as string,
-    hasBody: hasContent,
-    Component: mod.default,
+    slug: item.slug,
+    title: item.title,
+    snippet: item.snippet,
+    source: item.source,
+    url: item.url,
+    tags: item.tags,
+    date: item.date,
+    hasBody: item.hasBody ?? true,
+    Component: getLazyMdxComponent(item.path, readModules),
   };
 }
 
-function slugFromPath(path: string) {
-  return path.split("/").pop()?.replace(/\.mdx$/i, "") || path;
-}
-
-function mdxToDailyNote(path: string, mod: MdxModule): DailyNote & { Component: ComponentType } {
-  const fm = mod.frontmatter;
-  const slug = (fm.slug as string | undefined)?.trim() || slugFromPath(path);
-  const date = (fm.date as string | undefined)?.trim() || slug;
-  const title = (fm.title as string | undefined)?.trim() || `Daily Note: ${date}`;
-  const summary = (fm.summary as string | undefined)?.trim() || `Catatan harian ${date}`;
-
+function toDailyMeta(
+  item: (typeof dailyMeta)[number]
+): DailyNote & { Component: RenderableMdxComponent } {
   return {
-    slug,
-    title,
-    date,
-    summary,
-    tags: normalizeStringArray(fm.tags, ["daily"]),
-    Component: mod.default,
+    slug: item.slug,
+    title: item.title,
+    date: item.date,
+    summary: item.summary,
+    tags: item.tags.length > 0 ? item.tags : ["daily"],
+    Component: getLazyMdxComponent(item.path, dailyModules),
   };
 }
 
-// Build post arrays
-export const writingPosts = Object.values(writingModules).map(mdxToPost);
-export const articlePosts = Object.values(articleModules).map(mdxToPost);
+export const writingPosts = writingMeta.map((item) => toPostMeta(item, writingModules));
+export const articlePosts = articleMeta.map((item) => toPostMeta(item, articleModules));
 export const allPosts = [...writingPosts, ...articlePosts].sort(
   (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
 );
 
-export const allReadItems = Object.values(readModules).map(mdxToReadItem);
-export const allDailyNotes = Object.entries(dailyModules)
-  .map(([path, mod]) => mdxToDailyNote(path, mod))
+export const allReadItems = readMeta.map(toReadMeta);
+export const allDailyNotes = dailyMeta
+  .map(toDailyMeta)
   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-// About page content
 export function getAboutContent() {
-  const mod = Object.values(aboutModule)[0];
-  if (!mod) return null;
-  return { Component: mod.default, frontmatter: mod.frontmatter };
+  if (!aboutMeta) return null;
+  return {
+    Component: getLazyMdxComponent(aboutMeta.path, aboutModules),
+    frontmatter: aboutMeta.frontmatter,
+  };
 }
 
 export function getNowContent() {
-  const mod = Object.values(nowModule)[0];
-  if (!mod) return null;
-  return { Component: mod.default, frontmatter: mod.frontmatter };
+  if (!nowMeta) return null;
+  return {
+    Component: getLazyMdxComponent(nowMeta.path, nowModules),
+    frontmatter: nowMeta.frontmatter,
+  };
 }
 
-// Lookup helpers
 export function getContentBySlug(slug: string) {
   return allPosts.find((p) => p.slug === slug);
 }
