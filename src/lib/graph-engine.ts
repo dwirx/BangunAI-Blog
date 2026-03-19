@@ -25,6 +25,15 @@ export interface HybridGraphData {
   neighbors: Map<string, Set<string>>;
 }
 
+export interface PreviewGraphOptions {
+  focusId?: string;
+  maxNodes?: number;
+  maxEdges?: number;
+  maxFocusNeighbors?: number;
+  maxEdgesPerNode?: number;
+  includeCategoryEdges?: boolean;
+}
+
 function normalizeText(value: unknown) {
   const text = typeof value === "string" ? value : String(value ?? "");
   return text.toLowerCase().trim();
@@ -122,6 +131,102 @@ export function buildHybridGraph(posts: Post[]): HybridGraphData {
   }
 
   return { nodes, edges, neighbors };
+}
+
+export function buildPreviewGraph(
+  graph: HybridGraphData,
+  options: PreviewGraphOptions = {}
+): HybridGraphData {
+  const {
+    focusId,
+    maxNodes = 48,
+    maxEdges = 120,
+    maxFocusNeighbors = 18,
+    maxEdgesPerNode = 7,
+    includeCategoryEdges = false,
+  } = options;
+
+  if (includeCategoryEdges && graph.nodes.length <= maxNodes && graph.edges.length <= maxEdges) {
+    return graph;
+  }
+
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const candidateEdges = graph.edges
+    .filter((edge) => includeCategoryEdges || edge.kind !== "category")
+    .sort((a, b) => b.weight - a.weight);
+
+  const selectedNodes = new Set<string>();
+  const addNode = (id: string) => {
+    if (!nodeById.has(id) || selectedNodes.has(id) || selectedNodes.size >= maxNodes) return false;
+    selectedNodes.add(id);
+    return true;
+  };
+
+  if (focusId) addNode(focusId);
+
+  if (focusId && maxFocusNeighbors > 0) {
+    let focusCount = 0;
+    for (const edge of candidateEdges) {
+      if (focusCount >= maxFocusNeighbors || selectedNodes.size >= maxNodes) break;
+      if (edge.source !== focusId && edge.target !== focusId) continue;
+      const peerId = edge.source === focusId ? edge.target : edge.source;
+      if (addNode(peerId)) focusCount += 1;
+    }
+  }
+
+  for (const edge of candidateEdges) {
+    if (selectedNodes.size >= maxNodes) break;
+    const hasSource = selectedNodes.has(edge.source);
+    const hasTarget = selectedNodes.has(edge.target);
+    if (hasSource && hasTarget) continue;
+    if (hasSource || hasTarget) {
+      addNode(hasSource ? edge.target : edge.source);
+    }
+  }
+
+  for (const edge of candidateEdges) {
+    if (selectedNodes.size >= maxNodes) break;
+    const hasSource = selectedNodes.has(edge.source);
+    const hasTarget = selectedNodes.has(edge.target);
+    if (hasSource && hasTarget) continue;
+    addNode(edge.source);
+    addNode(edge.target);
+  }
+
+  if (selectedNodes.size === 0) {
+    for (const node of graph.nodes) {
+      if (!addNode(node.id)) break;
+    }
+  }
+
+  const selectedEdges: GraphEdgeData[] = [];
+  const degreeByNode = new Map<string, number>();
+  for (const edge of candidateEdges) {
+    if (selectedEdges.length >= maxEdges) break;
+    if (!selectedNodes.has(edge.source) || !selectedNodes.has(edge.target)) continue;
+
+    const sourceDegree = degreeByNode.get(edge.source) ?? 0;
+    const targetDegree = degreeByNode.get(edge.target) ?? 0;
+    if (sourceDegree >= maxEdgesPerNode || targetDegree >= maxEdgesPerNode) continue;
+
+    selectedEdges.push(edge);
+    degreeByNode.set(edge.source, sourceDegree + 1);
+    degreeByNode.set(edge.target, targetDegree + 1);
+  }
+
+  const selectedNodeList = graph.nodes.filter((node) => selectedNodes.has(node.id));
+  const neighbors = new Map<string, Set<string>>();
+  selectedNodeList.forEach((node) => neighbors.set(node.id, new Set()));
+  selectedEdges.forEach((edge) => {
+    neighbors.get(edge.source)?.add(edge.target);
+    neighbors.get(edge.target)?.add(edge.source);
+  });
+
+  return {
+    nodes: selectedNodeList,
+    edges: selectedEdges,
+    neighbors,
+  };
 }
 
 function hashString(value: string) {

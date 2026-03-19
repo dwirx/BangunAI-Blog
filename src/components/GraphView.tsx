@@ -1,8 +1,10 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from "react";
 import { allPosts } from "@/content";
-import { buildHybridGraph, seededUnit, type GraphEdgeKind } from "@/lib/graph-engine";
+import { buildHybridGraph, buildPreviewGraph, seededUnit, type GraphEdgeKind } from "@/lib/graph-engine";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Maximize2, ZoomIn, ZoomOut, RotateCcw, Focus } from "lucide-react";
+
+const MAX_GRAPH_DPR = 1.5;
 
 interface Node {
   id: string;
@@ -45,12 +47,25 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
   const dragWasPinned = useRef(false);
   const sizeRef = useRef({ w: 500, h: 300 });
   const [zoomLevel, setZoomLevel] = useState(100);
+  const [isInViewport, setIsInViewport] = useState(() => (typeof window === "undefined" ? true : false));
+  const [isPageVisible, setIsPageVisible] = useState(
+    () => (typeof document === "undefined" ? true : document.visibilityState !== "hidden")
+  );
 
   const lastTouchDist = useRef(0);
   const lastTouchCenter = useRef({ x: 0, y: 0 });
+  const titleBySlug = useMemo(() => new Map(allPosts.map((post) => [post.slug, post.title])), []);
 
   const { nodes, edges, neighbors } = useMemo(() => {
-    const graph = buildHybridGraph(allPosts);
+    const fullGraph = buildHybridGraph(allPosts);
+    const graph = buildPreviewGraph(fullGraph, {
+      focusId: currentSlug,
+      maxNodes: 48,
+      maxEdges: 120,
+      maxFocusNeighbors: 18,
+      maxEdgesPerNode: 7,
+      includeCategoryEdges: false,
+    });
     const nodeMap = new Map<string, Node>();
     graph.nodes.forEach((node, i) => {
       const angle = (i / graph.nodes.length) * Math.PI * 2 + seededUnit(`${node.id}:angle`) * 0.8;
@@ -69,7 +84,7 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
     });
 
     return { nodes: Array.from(nodeMap.values()), edges: graph.edges, neighbors: graph.neighbors };
-  }, []);
+  }, [currentSlug]);
 
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
@@ -96,6 +111,38 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
     return null;
   }, [screenToCanvas]);
 
+  useEffect(() => {
+    if (isCollapsed) return;
+    const container = containerRef.current;
+    if (!container) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setIsInViewport(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        setIsInViewport(Boolean(entry?.isIntersecting));
+      },
+      { threshold: 0.02 }
+    );
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [isCollapsed]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const handleVisibility = () => {
+      setIsPageVisible(document.visibilityState !== "hidden");
+    };
+    handleVisibility();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
+  const isGraphActive = !isCollapsed && isInViewport && isPageVisible;
+
   // HiDPI canvas resize
   useEffect(() => {
     if (isCollapsed) return;
@@ -104,7 +151,7 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
     if (!canvas || !container) return;
 
     const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, MAX_GRAPH_DPR);
       const rect = container.getBoundingClientRect();
       const w = rect.width;
       const h = rect.height;
@@ -123,18 +170,29 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
 
   // Force simulation + draw
   useEffect(() => {
-    if (isCollapsed) return;
+    if (!isGraphActive) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     let animId: number;
+    let lastFrameAt = 0;
+    const frameIntervalMs =
+      typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches
+        ? 1000 / 40
+        : 1000 / 60;
 
-    const tick = () => {
+    const tick = (timestamp: number) => {
+      if (timestamp - lastFrameAt < frameIntervalMs) {
+        animId = requestAnimationFrame(tick);
+        return;
+      }
+      lastFrameAt = timestamp;
+
       const ns = nodesRef.current;
       const t = transformRef.current;
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, MAX_GRAPH_DPR);
       const W = sizeRef.current.w;
       const H = sizeRef.current.h;
       const hovered = hoveredRef.current;
@@ -198,7 +256,7 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
 
       // Subtle background pattern
       ctx.fillStyle = "rgba(100,116,139,0.015)";
-      const gridSize = 30 * t.scale;
+      const gridSize = Math.max(14, 30 * t.scale);
       const offX = t.x % gridSize;
       const offY = t.y % gridSize;
       for (let gx = offX - gridSize; gx < W + gridSize; gx += gridSize) {
@@ -334,9 +392,9 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
       animId = requestAnimationFrame(tick);
     };
 
-    tick();
+    animId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animId);
-  }, [edges, neighbors, currentSlug, isCollapsed]);
+  }, [edges, neighbors, currentSlug, isGraphActive]);
 
   // Mouse handlers
   const getCanvasPos = useCallback((clientX: number, clientY: number) => {
@@ -347,6 +405,7 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
   }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType !== "mouse" && e.pointerType !== "pen") return;
     const { mx, my } = getCanvasPos(e.clientX, e.clientY);
     const node = findNodeAt(mx, my);
     dragMoved.current = false;
@@ -358,10 +417,14 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
       isPanning.current = true;
       panStart.current = { x: e.clientX - transformRef.current.x, y: e.clientY - transformRef.current.y };
     }
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const target = e.target as HTMLElement;
+    if (target.setPointerCapture) {
+      target.setPointerCapture(e.pointerId);
+    }
   }, [findNodeAt, getCanvasPos]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType !== "mouse" && e.pointerType !== "pen") return;
     const { mx, my } = getCanvasPos(e.clientX, e.clientY);
 
     if (dragNode.current) {
@@ -392,12 +455,13 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
 
     const node = findNodeAt(mx, my);
     setHoveredNode(node?.id || null);
-    setHoveredLabel(node ? allPosts.find(p => p.slug === node.id)?.title || node.label : null);
+    setHoveredLabel(node ? titleBySlug.get(node.id) || node.label : null);
     const canvas = canvasRef.current;
     if (canvas) canvas.style.cursor = node ? "pointer" : "grab";
-  }, [findNodeAt, screenToCanvas, getCanvasPos]);
+  }, [findNodeAt, screenToCanvas, getCanvasPos, titleBySlug]);
 
-  const handlePointerUp = useCallback((_e: React.PointerEvent<HTMLCanvasElement>) => {
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType !== "mouse" && e.pointerType !== "pen") return;
     if (dragNode.current && !dragMoved.current) {
       dragNode.current.pinned = dragWasPinned.current;
       const node = dragNode.current;
@@ -538,7 +602,7 @@ export default function GraphView({ currentSlug }: { currentSlug?: string }) {
         <div ref={containerRef} className="relative h-[340px] sm:h-[420px]">
           <canvas
             ref={canvasRef}
-            className="w-full h-full touch-none"
+            className="w-full h-full touch-pan-y"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
