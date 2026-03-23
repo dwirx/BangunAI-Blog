@@ -222,13 +222,13 @@ Contoh ekstrem yang dibahas: **bogosort**.
 
 ```mermaid
 flowchart TD
-    A[O(1)] --> B[O(log N)]
-    B --> C[O(N)]
-    C --> D[O(N log N)]
-    D --> E[O(N²)]
-    E --> F[O(c^N)]
-    F --> G[O(N!)]
-    G --> H[Unbounded]
+    A["O(1) - Constant Time"] --> B["O(log N) - Logarithmic Time"]
+    B --> C["O(N) - Linear Time"]
+    C --> D["O(N log N) - Log Linear Time"]
+    D --> E["O(N^2) - Quadratic Time"]
+    E --> F["O(c^N) - Exponential Time"]
+    F --> G["O(N!) - Factorial Time"]
+    G --> H["Unbounded - Tak Berbatas"]
 ```
 
 Pelajaran pentingnya: perbedaan kecil di kiri menjadi jurang besar ketika N besar. Itu sebabnya arsitektur proses jauh lebih penting daripada optimasi kecil-kecilan.
