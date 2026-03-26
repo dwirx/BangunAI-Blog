@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { getDailyBySlug } from "@/content";
 import { mdxComponents } from "@/components/MdxComponents";
 import BackLink from "@/components/BackLink";
-import { ArrowLeft, Link as LinkIcon, Check } from "lucide-react";
+import SharePanel from "@/components/SharePanel";
+import { ArrowLeft } from "lucide-react";
 import TagLink from "@/components/TagLink";
 import TableOfContents from "@/components/TableOfContents";
 
@@ -23,7 +24,6 @@ export default function DailyDetail() {
   const { slug } = useParams<{ slug: string }>();
   const note = getDailyBySlug(slug || "");
   const [progress, setProgress] = useState(0);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const onScroll = () => {
@@ -48,12 +48,6 @@ export default function DailyDetail() {
       </div>
     );
   }
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const MdxContent = note.Component as React.ComponentType<MdxRendererProps>;
 
@@ -102,15 +96,7 @@ export default function DailyDetail() {
           </div>
         )}
 
-        <div className="max-w-[68ch] w-full mx-auto mt-10 pt-8 border-t border-border/40">
-          <button
-            onClick={handleCopyLink}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground/60 hover:text-foreground rounded-lg hover:bg-secondary/50 transition-all"
-          >
-            {copied ? <Check size={13} className="text-green-400" /> : <LinkIcon size={13} />}
-            {copied ? "Tersalin!" : "Copy link"}
-          </button>
-        </div>
+        <SharePanel title={note.title} summary={note.summary} badge="Daily" />
       </div>
     </>
   );

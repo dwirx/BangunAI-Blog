@@ -10,7 +10,8 @@ import Backlinks from "@/components/Backlinks";
 import TagLink from "@/components/TagLink";
 import GraphView from "@/components/GraphView";
 import TableOfContents from "@/components/TableOfContents";
-import { ArrowLeft, Link as LinkIcon, Check, Clock, Calendar } from "lucide-react";
+import SharePanel from "@/components/SharePanel";
+import { ArrowLeft, Clock, Calendar } from "lucide-react";
 
 type MdxRendererProps = {
   components?: Record<string, React.ComponentType<Record<string, unknown>>>;
@@ -21,7 +22,6 @@ export default function ArticleDetail() {
   const post = getContentBySlug(slug || "");
   const related = useMemo(() => getRelatedPosts(slug || "", 4), [slug]);
   const [progress, setProgress] = useState(0);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const onScroll = () => {
@@ -42,12 +42,6 @@ export default function ArticleDetail() {
       </div>
     );
   }
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const backLink = post.type === "article" ? "/artikel" : "/writing";
   const MdxContent = post.Component as React.ComponentType<MdxRendererProps>;
@@ -103,16 +97,11 @@ export default function ArticleDetail() {
           </div>
         )}
 
-        {/* Actions */}
-        <div className="max-w-[68ch] w-full mx-auto mt-10 pt-8 border-t border-border/40">
-          <button
-            onClick={handleCopyLink}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground/60 hover:text-foreground rounded-lg hover:bg-secondary/50 transition-all"
-          >
-            {copied ? <Check size={13} className="text-green-400" /> : <LinkIcon size={13} />}
-            {copied ? "Tersalin!" : "Copy link"}
-          </button>
-        </div>
+        <SharePanel
+          title={post.title}
+          summary={post.summary}
+          badge={post.type === "article" ? "Artikel" : "Writing"}
+        />
 
         {/* Backlinks */}
         <Backlinks slug={slug || ""} />
